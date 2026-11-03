@@ -103,5 +103,33 @@ describe('notificationService', () => {
       ],
     });
   });
+
+  it('triggers easter egg notification on native platform', async () => {
+    vi.mocked(Capacitor.isNativePlatform).mockReturnValue(true);
+    vi.mocked(LocalNotifications.checkPermissions).mockResolvedValue({ display: 'granted' } as any);
+    vi.mocked(LocalNotifications.schedule).mockResolvedValue({ notifications: [] } as any);
+
+    const result = await notificationService.triggerEasterEggNotification();
+
+    expect(result).toBe(true);
+    expect(LocalNotifications.schedule).toHaveBeenCalledWith({
+      notifications: [
+        expect.objectContaining({
+          id: 99999,
+          title: expect.stringContaining('Easter Egg'),
+          body: expect.stringContaining('12'),
+        }),
+      ],
+    });
+  });
+
+  it('does not trigger easter egg notification on non-native platform', async () => {
+    vi.mocked(Capacitor.isNativePlatform).mockReturnValue(false);
+
+    const result = await notificationService.triggerEasterEggNotification();
+
+    expect(result).toBe(false);
+    expect(LocalNotifications.schedule).not.toHaveBeenCalled();
+  });
 });
 

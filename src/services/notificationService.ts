@@ -170,6 +170,37 @@ class NotificationService {
       console.warn('Error cancelling workout reminders:', error);
     }
   }
+
+  /**
+   * Trigger easter egg notification when tapping logo 12 times in profile
+   */
+  async triggerEasterEggNotification(): Promise<boolean> {
+    if (!Capacitor.isNativePlatform()) return false;
+
+    try {
+      await this.requestPermissions();
+      await this.ensureChannel();
+
+      await LocalNotifications.schedule({
+        notifications: [
+          {
+            id: 99999,
+            title: '🐾 ¡Easter Egg Desbloqueado!',
+            body: '¡Has descubierto el secreto de FitTrack tocando el logo 12 veces! Modo desarrollador fit activado 💪🚀',
+            channelId: WORKOUT_CHANNEL_ID,
+            schedule: {
+              at: new Date(Date.now() + 300),
+              allowWhileIdle: true,
+            },
+          },
+        ],
+      });
+      return true;
+    } catch (error) {
+      console.error('Error triggering easter egg notification:', error);
+      return false;
+    }
+  }
 }
 
 export const notificationService = new NotificationService();

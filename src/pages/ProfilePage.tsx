@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   IonPage,
   IonHeader,
@@ -30,12 +30,15 @@ import {
   scaleOutline,
   barbellOutline,
   checkmarkCircleOutline,
+  sparklesOutline,
 } from 'ionicons/icons';
+import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
 import { useApp } from '../context/AppContext';
 import { Gender, UserProfile } from '../types';
 import { calculateAge, formatDateDDMMYYYY } from '../services/storage';
 import { DateInput } from '../components/DateInput';
 import { AppHeader } from '../components/AppHeader';
+import { notificationService } from '../services/notificationService';
 
 export const ProfilePage: React.FC = () => {
   const { profile, saveProfile, resetAllData, workoutSessions, weightRecords } = useApp();
@@ -49,6 +52,71 @@ export const ProfilePage: React.FC = () => {
   const [showToast, setShowToast] = useState(false);
   const [showResetAlert, setShowResetAlert] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+
+  // Easter egg states: 12 taps on logo triggers Android notification
+  const [tapCount, setTapCount] = useState(0);
+  const [isLogoPressed, setIsLogoPressed] = useState(false);
+  const [easterEggToast, setEasterEggToast] = useState<{
+    isOpen: boolean;
+    message: string;
+    color: string;
+  }>({
+    isOpen: false,
+    message: '',
+    color: 'primary',
+  });
+  const tapResetTimerRef = useRef<any>(null);
+
+  const handleLogoTap = async () => {
+    // Visual bounce
+    setIsLogoPressed(true);
+    setTimeout(() => setIsLogoPressed(false), 120);
+
+    // Haptic feedback
+    try {
+      await Haptics.impact({ style: ImpactStyle.Light });
+    } catch {
+      // ignore
+    }
+
+    // Reset tap sequence after 3 seconds of inactivity
+    if (tapResetTimerRef.current) {
+      clearTimeout(tapResetTimerRef.current);
+    }
+    tapResetTimerRef.current = setTimeout(() => {
+      setTapCount(0);
+    }, 3000);
+
+    const nextCount = tapCount + 1;
+    setTapCount(nextCount);
+
+    if (nextCount >= 12) {
+      setTapCount(0);
+      if (tapResetTimerRef.current) clearTimeout(tapResetTimerRef.current);
+
+      try {
+        await Haptics.notification({ type: NotificationType.Success });
+      } catch {
+        // ignore
+      }
+
+      // Fire Android native notification
+      await notificationService.triggerEasterEggNotification();
+
+      setEasterEggToast({
+        isOpen: true,
+        message: '🎉 ¡Easter Egg desbloqueado! Notificación enviada.',
+        color: 'primary',
+      });
+    } else if (nextCount >= 7) {
+      const remaining = 12 - nextCount;
+      setEasterEggToast({
+        isOpen: true,
+        message: `Estás a ${remaining} toque${remaining > 1 ? 's' : ''} de desbloquear el secreto...`,
+        color: 'dark',
+      });
+    }
+  };
 
   useEffect(() => {
     if (profile) {
@@ -90,28 +158,50 @@ export const ProfilePage: React.FC = () => {
 
   return (
     <IonPage>
-      <AppHeader subtitle="Mi Cuenta & Objetivos" />
+      <AppHeader subtitle="Mi Cuenta & Objetivos" onBrandClick={handleLogoTap} />
 
       <IonContent className="ion-padding" fullscreen>
-        {/* User Avatar Card */}
+        {/* User Avatar & App Logo Card */}
         <div style={{ textAlign: 'center', margin: '16px 0 20px' }}>
           <div
+            onClick={handleLogoTap}
             style={{
               position: 'relative',
-              width: '80px',
-              height: '80px',
-              margin: '0 auto 12px',
-              borderRadius: '20px',
+              width: '84px',
+              height: '84px',
+              margin: '0 auto',
+              borderRadius: '22px',
               overflow: 'hidden',
               border: '2px solid var(--ion-color-step-150)',
+              cursor: 'pointer',
+              userSelect: 'none',
+              transform: isLogoPressed ? 'scale(0.92)' : 'scale(1)',
+              transition: 'transform 0.12s ease',
+              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.25)',
             }}
+            title="FitTrack Logo"
           >
             <img
               src="/icon-192.png"
-              alt="Avatar"
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              alt="FitTrack Logo"
+              style={{ width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none' }}
             />
           </div>
+
+          {/* Version number below the logo */}
+          <div
+            style={{
+              fontSize: '0.8rem',
+              color: '#64748b',
+              fontWeight: 600,
+              letterSpacing: '0.4px',
+              marginTop: '6px',
+              marginBottom: '10px',
+            }}
+          >
+            v1.0.0
+          </div>
+
           <h2 style={{ margin: '0 0 4px', fontWeight: 700, fontSize: '1.35rem', letterSpacing: '-0.3px' }}>
             {profile?.name || 'Usuario'}
           </h2>
@@ -250,6 +340,15 @@ export const ProfilePage: React.FC = () => {
           message="Perfil actualizado correctamente."
           duration={2000}
           color="success"
+        />
+
+        <IonToast
+          isOpen={easterEggToast.isOpen}
+          onDidDismiss={() => setEasterEggToast((prev) => ({ ...prev, isOpen: false }))}
+          message={easterEggToast.message}
+          duration={2200}
+          color={easterEggToast.color}
+          position="bottom"
         />
 
         <IonAlert

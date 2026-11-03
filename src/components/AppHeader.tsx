@@ -6,6 +6,7 @@ interface AppHeaderProps {
   subtitle?: string;
   showBrand?: boolean;
   rightAction?: React.ReactNode;
+  onBrandClick?: () => void;
 }
 
 export const AppHeader: React.FC<AppHeaderProps> = ({
@@ -13,6 +14,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   subtitle,
   showBrand = true,
   rightAction,
+  onBrandClick,
 }) => {
   return (
     <IonHeader>
@@ -27,7 +29,16 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           }}
         >
           {showBrand ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div
+              onClick={onBrandClick}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                cursor: onBrandClick ? 'pointer' : 'default',
+                userSelect: 'none',
+              }}
+            >
               <img
                 src="/favicon.png"
                 alt="FitTrack"
