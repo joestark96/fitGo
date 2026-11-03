@@ -387,7 +387,9 @@ export const ReportsPage: React.FC = () => {
     // 3. Start workout & open player modal
     startWorkout(routine);
     setShowAllWorkoutsModal(false);
-    setIsPlayerOpen(true);
+    setTimeout(() => {
+      setIsPlayerOpen(true);
+    }, 150);
   };
 
   const handleSaveAsNewRoutine = (name?: string) => {

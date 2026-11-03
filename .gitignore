@@ -38,6 +38,7 @@ yarn-error.log*
 
 # Android build outputs
 *.apk
+!docs/*.apk
 .gradle/
 android/app/build/
 android/build/

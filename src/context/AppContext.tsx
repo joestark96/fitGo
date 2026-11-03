@@ -187,9 +187,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const startWorkout = (routine: Routine): WorkoutSession => {
-    const workoutExercises: WorkoutExerciseResult[] = routine.exercises.map((item) => {
+    const routineExercises = routine?.exercises || [];
+    const workoutExercises: WorkoutExerciseResult[] = routineExercises.map((item, idx) => {
       const sets: WorkoutSetResult[] = [];
-      const totalSets = item.targetSets > 0 ? item.targetSets : 3;
+      const totalSets = item.targetSets && item.targetSets > 0 ? item.targetSets : 3;
 
       for (let i = 1; i <= totalSets; i++) {
         sets.push({
@@ -203,9 +204,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       }
 
       return {
-        exerciseId: item.exerciseId,
-        exerciseName: item.exerciseName,
-        mode: item.mode,
+        exerciseId: item.exerciseId || `ex-${idx}`,
+        exerciseName: item.exerciseName || 'Ejercicio',
+        mode: item.mode || 'weight_reps',
         gifUrl: item.gifUrl,
         sets,
       };
@@ -213,8 +214,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     const newSession: WorkoutSession = {
       id: 'session-' + Date.now(),
-      routineId: routine.id,
-      routineName: routine.name,
+      routineId: routine?.id,
+      routineName: routine?.name || 'Entrenamiento',
       date: new Date().toISOString().split('T')[0],
       startedAt: new Date().toISOString(),
       exercises: workoutExercises,
@@ -393,16 +394,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (syncToRoutine && activeWorkout.routineId) {
       const routine = routines.find((r) => r.id === activeWorkout.routineId);
       if (routine) {
-        const updatedRoutineExercises: RoutineExerciseConfig[] = activeWorkout.exercises.map((ex, idx) => {
-          const existing = routine.exercises.find((re) => re.exerciseId === ex.exerciseId);
-          const firstSet = ex.sets[0];
+        const updatedRoutineExercises: RoutineExerciseConfig[] = (activeWorkout.exercises || []).map((ex, idx) => {
+          const existing = (routine.exercises || []).find((re) => re.exerciseId === ex.exerciseId);
+          const firstSet = (ex.sets || [])[0];
           return {
             id: existing?.id || `rex-${Date.now()}-${idx}`,
             exerciseId: ex.exerciseId,
             exerciseName: ex.exerciseName,
             mode: ex.mode,
             gifUrl: ex.gifUrl,
-            targetSets: ex.sets.length,
+            targetSets: (ex.sets || []).length || 3,
             targetReps: firstSet?.actualReps ?? existing?.targetReps ?? 10,
             targetWeightKg: firstSet?.actualWeightKg ?? existing?.targetWeightKg ?? 20,
             targetDurationSeconds: firstSet?.actualDurationSeconds ?? existing?.targetDurationSeconds ?? 30,

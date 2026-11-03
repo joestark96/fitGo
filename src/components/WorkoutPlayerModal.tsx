@@ -96,7 +96,20 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
   // Alert confirmations & dialogs
   const [showCancelAlert, setShowCancelAlert] = useState(false);
   const [showFinishAlert, setShowFinishAlert] = useState(false);
+  const [finishSnapshotSeconds, setFinishSnapshotSeconds] = useState<number | null>(null);
+  const [syncRoutineChecked, setSyncRoutineChecked] = useState<boolean>(true);
   const [exerciseIndexToDelete, setExerciseIndexToDelete] = useState<number | null>(null);
+
+  const handleOpenFinishAlert = () => {
+    setFinishSnapshotSeconds(elapsedSeconds);
+    setSyncRoutineChecked(true);
+    setShowFinishAlert(true);
+  };
+
+  const handleCloseFinishAlert = () => {
+    setShowFinishAlert(false);
+    setFinishSnapshotSeconds(null);
+  };
 
   // Exercise Catalog Modal state
   const [isCatalogOpen, setIsCatalogOpen] = useState(false);
@@ -123,17 +136,25 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
 
   // Expand all exercises when workout starts or opens
   useEffect(() => {
-    if (activeWorkout) {
-      const initial: Record<number, boolean> = {};
-      activeWorkout.exercises.forEach((_, idx) => {
-        initial[idx] = true;
-      });
-      setExpandedExIndices(initial);
-      setIsReordering(false);
-      setDraggedExIdx(null);
-      setDragOverExIdx(null);
+    if (isOpen) {
+      if (activeWorkout) {
+        const initial: Record<number, boolean> = {};
+        (activeWorkout.exercises || []).forEach((_, idx) => {
+          initial[idx] = true;
+        });
+        setExpandedExIndices(initial);
+        setIsReordering(false);
+        setDraggedExIdx(null);
+        setDragOverExIdx(null);
+      }
+    } else {
+      setShowCancelAlert(false);
+      setShowFinishAlert(false);
+      setRestSecondsLeft(null);
+      setIsCatalogOpen(false);
+      setShowConverterModal(false);
     }
-  }, [activeWorkout?.startedAt]);
+  }, [isOpen, activeWorkout?.startedAt]);
 
   const isExerciseExpanded = (idx: number) => {
     return !!expandedExIndices[idx] && !isReordering;
@@ -208,7 +229,7 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
   // Elapsed timer loop
   useEffect(() => {
     let interval: any = null;
-    if (isOpen && activeWorkout && isTimerRunning) {
+    if (isOpen && activeWorkout && isTimerRunning && !showFinishAlert) {
       interval = setInterval(() => {
         setElapsedSeconds((prev) => prev + 1);
       }, 1000);
@@ -216,7 +237,7 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [isOpen, activeWorkout, isTimerRunning]);
+  }, [isOpen, activeWorkout, isTimerRunning, showFinishAlert]);
 
   // Rest countdown timer loop
   useEffect(() => {
@@ -233,8 +254,18 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
     };
   }, [restSecondsLeft]);
 
-  const handleGoHome = () => {
+  const handleDismiss = () => {
     setSessionSummary(null);
+    setRedirectSeconds(15);
+    setRestSecondsLeft(null);
+    setShowCancelAlert(false);
+    setShowFinishAlert(false);
+    setFinishSnapshotSeconds(null);
+    setSyncRoutineChecked(true);
+    onClose();
+  };
+
+  const handleGoHome = () => {
     onClose();
     try {
       navigate('/workouts');
@@ -246,7 +277,7 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
   // 15-second countdown timer for auto-redirection to home
   useEffect(() => {
     let timer: any = null;
-    if (sessionSummary !== null) {
+    if (sessionSummary !== null && isOpen) {
       if (redirectSeconds > 0) {
         timer = setInterval(() => {
           setRedirectSeconds((prev) => prev - 1);
@@ -258,12 +289,81 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
     return () => {
       if (timer) clearInterval(timer);
     };
-  }, [sessionSummary, redirectSeconds]);
+  }, [sessionSummary, redirectSeconds, isOpen]);
 
-  // Session Summary Screen
-  if (sessionSummary) {
-    return (
-      <IonModal isOpen={isOpen} onDidDismiss={handleGoHome}>
+  // Format mm:ss
+  const formatTime = (secs: number) => {
+    const mins = Math.floor(secs / 60);
+    const remainder = secs % 60;
+    return `${mins.toString().padStart(2, '0')}:${remainder.toString().padStart(2, '0')}`;
+  };
+
+  // Calculate total sets and completed sets safely
+  let totalSetsCount = 0;
+  let completedSetsCount = 0;
+  if (activeWorkout?.exercises) {
+    activeWorkout.exercises.forEach((ex) => {
+      (ex.sets || []).forEach((s) => {
+        totalSetsCount++;
+        if (s.completed) completedSetsCount++;
+      });
+    });
+  }
+
+  const progress = totalSetsCount > 0 ? completedSetsCount / totalSetsCount : 0;
+
+  const nextPendingSet = useMemo(() => {
+    if (!activeWorkout || !activeWorkout.exercises) return null;
+    for (let exIdx = 0; exIdx < activeWorkout.exercises.length; exIdx++) {
+      const exercise = activeWorkout.exercises[exIdx];
+      if (!exercise || !exercise.sets) continue;
+      for (let setIdx = 0; setIdx < exercise.sets.length; setIdx++) {
+        const set = exercise.sets[setIdx];
+        if (set && !set.completed) {
+          return {
+            exerciseIndex: exIdx,
+            setIndex: setIdx,
+            exerciseName: exercise.exerciseName,
+            setNumber: set.setNumber,
+          };
+        }
+      }
+    }
+    return null;
+  }, [activeWorkout]);
+
+  const handleToggleSet = (exIdx: number, setIdx: number) => {
+    if (!activeWorkout || !activeWorkout.exercises[exIdx]) return;
+    const targetExercise = activeWorkout.exercises[exIdx];
+    if (!targetExercise.sets || !targetExercise.sets[setIdx]) return;
+    const targetSet = targetExercise.sets[setIdx];
+    const willBeCompleted = !targetSet.completed;
+    toggleSetCompleted(exIdx, setIdx);
+
+    // If marked completed, start rest timer
+    if (willBeCompleted) {
+      const suggestedRest = 60;
+      setRestMaxDuration(suggestedRest);
+      setRestSecondsLeft(suggestedRest);
+    }
+  };
+
+  const handleConfirmCancel = () => {
+    setShowCancelAlert(false);
+    cancelActiveWorkout();
+    onClose();
+  };
+
+  const handleSelectExerciseFromCatalog = (exercise: ExerciseDefinition) => {
+    addExerciseToActiveWorkout(exercise);
+    setIsCatalogOpen(false);
+    setToastMessage(`¡"${exercise.name}" agregado a tu entrenamiento!`);
+  };
+
+  return (
+    <IonModal isOpen={isOpen} onDidDismiss={handleDismiss}>
+      {sessionSummary ? (
+        <>
         <IonHeader>
           <IonToolbar className="fit-navbar" style={{ ['--background' as any]: '#101318' }}>
             <IonTitle style={{ fontWeight: 800, fontSize: '1.15rem', color: '#ffffff' }}>
@@ -510,76 +610,9 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
             </button>
           </div>
         </IonFooter>
-      </IonModal>
-    );
-  }
-
-  if (!activeWorkout) return null;
-
-  // Format mm:ss
-  const formatTime = (secs: number) => {
-    const mins = Math.floor(secs / 60);
-    const remainder = secs % 60;
-    return `${mins.toString().padStart(2, '0')}:${remainder.toString().padStart(2, '0')}`;
-  };
-
-  // Calculate total sets and completed sets
-  let totalSetsCount = 0;
-  let completedSetsCount = 0;
-  activeWorkout.exercises.forEach((ex) => {
-    ex.sets.forEach((s) => {
-      totalSetsCount++;
-      if (s.completed) completedSetsCount++;
-    });
-  });
-
-  const progress = totalSetsCount > 0 ? completedSetsCount / totalSetsCount : 0;
-
-  const nextPendingSet = useMemo(() => {
-    if (!activeWorkout || !activeWorkout.exercises) return null;
-    for (let exIdx = 0; exIdx < activeWorkout.exercises.length; exIdx++) {
-      const exercise = activeWorkout.exercises[exIdx];
-      for (let setIdx = 0; setIdx < exercise.sets.length; setIdx++) {
-        const set = exercise.sets[setIdx];
-        if (!set.completed) {
-          return {
-            exerciseIndex: exIdx,
-            setIndex: setIdx,
-            exerciseName: exercise.exerciseName,
-            setNumber: set.setNumber,
-          };
-        }
-      }
-    }
-    return null;
-  }, [activeWorkout]);
-
-  const handleToggleSet = (exIdx: number, setIdx: number) => {
-    const targetSet = activeWorkout.exercises[exIdx].sets[setIdx];
-    const willBeCompleted = !targetSet.completed;
-    toggleSetCompleted(exIdx, setIdx);
-
-    // If marked completed, start rest timer
-    if (willBeCompleted) {
-      const suggestedRest = 60;
-      setRestMaxDuration(suggestedRest);
-      setRestSecondsLeft(suggestedRest);
-    }
-  };
-
-  const handleConfirmCancel = () => {
-    cancelActiveWorkout();
-    onClose();
-  };
-
-  const handleSelectExerciseFromCatalog = (exercise: ExerciseDefinition) => {
-    addExerciseToActiveWorkout(exercise);
-    setIsCatalogOpen(false);
-    setToastMessage(`¡"${exercise.name}" agregado a tu entrenamiento!`);
-  };
-
-  return (
-    <IonModal isOpen={isOpen} onDidDismiss={onClose}>
+        </>
+      ) : activeWorkout ? (
+        <>
       <IonHeader>
         <IonToolbar className="fit-navbar">
           <IonButtons slot="start">
@@ -614,7 +647,7 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
               fill="solid"
               color="success"
               style={{ fontWeight: 800, borderRadius: '12px' }}
-              onClick={() => setShowFinishAlert(true)}
+              onClick={handleOpenFinishAlert}
             >
               Terminar
             </IonButton>
@@ -728,12 +761,13 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
         </div>
 
         {/* Exercises list with interactive Sets (Accordion + Drag and Drop) */}
-        {activeWorkout.exercises.map((exercise, exIdx) => {
+        {(activeWorkout?.exercises || []).map((exercise, exIdx) => {
           const isExpanded = isExerciseExpanded(exIdx);
           const isDraggingThis = draggedExIdx === exIdx;
           const isOverThis = dragOverExIdx === exIdx;
-          const completedCount = exercise.sets.filter((s) => s.completed).length;
-          const totalCount = exercise.sets.length;
+          const sets = exercise.sets || [];
+          const completedCount = sets.filter((s) => s.completed).length;
+          const totalCount = sets.length;
           const allCompleted = totalCount > 0 && completedCount === totalCount;
 
           return (
@@ -943,7 +977,7 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
               </div>
 
               {/* Set Rows */}
-              {exercise.sets.map((s, setIdx) => (
+              {(exercise.sets || []).map((s, setIdx) => (
                 <div
                   key={setIdx}
                   style={{
@@ -1124,7 +1158,7 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
                   <div style={{ display: 'flex', justifyContent: 'center' }}>
                     <button
                       type="button"
-                      disabled={exercise.sets.length <= 1}
+                      disabled={(exercise.sets || []).length <= 1}
                       onClick={() => removeSetFromActiveWorkout(exIdx, setIdx)}
                       style={{
                         background: 'transparent',
@@ -1137,7 +1171,7 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
                         justifyContent: 'center',
                       }}
                       title={
-                        exercise.sets.length <= 1
+                        (exercise.sets || []).length <= 1
                           ? 'Debe haber al menos 1 serie'
                           : `Eliminar serie #${s.setNumber}`
                       }
@@ -1167,7 +1201,7 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
                     style={{ borderRadius: '8px', fontWeight: 600 }}
                     onClick={() => {
                       addSetToActiveWorkout(exIdx);
-                      setToastMessage(`Serie #${exercise.sets.length + 1} agregada a ${exercise.exerciseName}`);
+                      setToastMessage(`Serie #${(exercise.sets || []).length + 1} agregada a ${exercise.exerciseName}`);
                     }}
                   >
                     <IonIcon slot="start" icon={addOutline} />
@@ -1176,7 +1210,7 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
                 </div>
 
                 <IonBadge color="medium" style={{ fontSize: '0.75rem', fontWeight: 500 }}>
-                  {exercise.sets.filter((s) => s.completed).length} de {exercise.sets.length} completadas
+                  {(exercise.sets || []).filter((s) => s.completed).length} de {(exercise.sets || []).length} completadas
                 </IonBadge>
               </div>
             </IonCardContent>
@@ -1227,7 +1261,7 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
             size="large"
             color="success"
             style={{ borderRadius: '14px', fontWeight: 700 }}
-            onClick={() => setShowFinishAlert(true)}
+            onClick={handleOpenFinishAlert}
           >
             <IonIcon slot="start" icon={trophyOutline} />
             Finalizar Entrenamiento
@@ -1269,7 +1303,7 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
           ) : (
             <button
               type="button"
-              onClick={() => setShowFinishAlert(true)}
+              onClick={handleOpenFinishAlert}
               style={{
                 width: '100%',
                 minHeight: '52px',
@@ -1295,6 +1329,10 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
           )}
         </div>
       </IonFooter>
+        </>
+      ) : (
+        <div style={{ background: '#101318', height: '100%', width: '100%' }} />
+      )}
 
       {/* Exercise Catalog Modal */}
       <ExerciseCatalogModal
@@ -1309,7 +1347,7 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
         onDidDismiss={() => setExerciseIndexToDelete(null)}
         header="¿Quitar ejercicio de la rutina?"
         message={
-          exerciseIndexToDelete !== null && activeWorkout.exercises[exerciseIndexToDelete]
+          exerciseIndexToDelete !== null && activeWorkout?.exercises?.[exerciseIndexToDelete]
             ? `¿Deseas quitar "${activeWorkout.exercises[exerciseIndexToDelete].exerciseName}" de este entrenamiento en curso?`
             : '¿Deseas quitar este ejercicio de la sesión en curso?'
         }
@@ -1335,10 +1373,10 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
       {/* Alert to Confirm Finish with Option to Sync Routine */}
       <IonAlert
         isOpen={showFinishAlert}
-        onDidDismiss={() => setShowFinishAlert(false)}
+        onDidDismiss={handleCloseFinishAlert}
         header="¿Finalizar entrenamiento?"
         message={`Completaste ${completedSetsCount} de ${totalSetsCount} series en ${formatTime(
-          elapsedSeconds
+          finishSnapshotSeconds ?? elapsedSeconds
         )}. ¡Gran trabajo!`}
         inputs={[
           {
@@ -1346,41 +1384,55 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
             type: 'checkbox',
             label: 'Guardar ejercicios y series en la rutina original',
             value: 'sync',
-            checked: true,
+            checked: syncRoutineChecked,
+            handler: (input: any) => {
+              setSyncRoutineChecked(input.checked !== undefined ? input.checked : !syncRoutineChecked);
+            },
           },
         ]}
         buttons={[
           {
             text: 'Continuar entrenando',
             role: 'cancel',
+            handler: handleCloseFinishAlert,
           },
           {
             text: '¡Guardar sesión!',
             handler: (data) => {
               const shouldSync = Array.isArray(data)
                 ? data.includes('sync')
-                : (data as any)?.syncRoutine === true || (data as any)?.syncRoutine === 'sync';
+                : typeof data === 'object' && data !== null
+                ? (data as any).syncRoutine === true || (data as any).syncRoutine === 'sync'
+                : syncRoutineChecked;
+
+              if (!activeWorkout) {
+                handleCloseFinishAlert();
+                onClose();
+                return;
+              }
+
+              const finalDurationSecs = finishSnapshotSeconds ?? elapsedSeconds;
 
               // Build snapshot summary before ending activeWorkout
               const summary: SessionSummary = {
-                routineName: activeWorkout.routineName,
-                durationFormatted: formatTime(elapsedSeconds),
+                routineName: activeWorkout.routineName || 'Entrenamiento',
+                durationFormatted: formatTime(finalDurationSecs),
                 totalSets: totalSetsCount,
                 completedSets: completedSetsCount,
-                totalVolumeKg: activeWorkout.exercises.reduce((acc, ex) => {
+                totalVolumeKg: (activeWorkout.exercises || []).reduce((acc, ex) => {
                   let exVol = 0;
-                  ex.sets.forEach((s) => {
+                  (ex.sets || []).forEach((s) => {
                     if (s.completed && s.actualReps && s.actualWeightKg) {
                       exVol += s.actualReps * s.actualWeightKg;
                     }
                   });
                   return acc + exVol;
                 }, 0),
-                exercises: activeWorkout.exercises.map((ex) => ({
-                  name: ex.exerciseName,
-                  completedSetsCount: ex.sets.filter((s) => s.completed).length,
-                  totalSetsCount: ex.sets.length,
-                  sets: ex.sets.map((s) => ({
+                exercises: (activeWorkout.exercises || []).map((ex) => ({
+                  name: ex.exerciseName || 'Ejercicio',
+                  completedSetsCount: (ex.sets || []).filter((s) => s.completed).length,
+                  totalSetsCount: (ex.sets || []).length,
+                  sets: (ex.sets || []).map((s) => ({
                     setNumber: s.setNumber,
                     weight: s.actualWeightKg,
                     reps: s.actualReps,
@@ -1389,6 +1441,7 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
                 })),
               };
 
+              handleCloseFinishAlert();
               finishActiveWorkout(undefined, shouldSync);
               setSessionSummary(summary);
               setRedirectSeconds(15);
