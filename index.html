@@ -14,6 +14,14 @@
     <meta name="format-detection" content="telephone=no" />
     <meta name="msapplication-tap-highlight" content="no" />
     
+    <!-- Redirección automática a la landing page en GitHub Pages -->
+    <script>
+      if (window.location.hostname.endsWith('github.io') && !window.location.pathname.includes('/docs')) {
+        var basePath = window.location.pathname.replace(/\/+$/, '');
+        window.location.replace(window.location.origin + basePath + '/docs/');
+      }
+    </script>
+
     <!-- Google Fonts: Plus Jakarta Sans (Athletic & Tech-forward) -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
