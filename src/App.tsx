@@ -9,7 +9,7 @@ import {
   IonTabs,
   setupIonicReact,
 } from '@ionic/react';
-import { IonReactRouter } from '@ionic/react-router';
+import { IonReactHashRouter } from '@ionic/react-router';
 import { barbell, scale, person, restaurant, barChart } from 'ionicons/icons';
 import { Navigate, Route } from 'react-router-dom';
 
@@ -100,9 +100,9 @@ const MainApp: React.FC = () => {
 const App: React.FC = () => (
   <IonApp>
     <AppProvider>
-      <IonReactRouter>
+      <IonReactHashRouter>
         <MainApp />
-      </IonReactRouter>
+      </IonReactHashRouter>
     </AppProvider>
   </IonApp>
 );

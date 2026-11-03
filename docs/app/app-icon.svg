@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Dark Athletic Matte Background -->
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0c1222"/>
+      <stop offset="100%" stop-color="#050811"/>
+    </linearGradient>
+
+    <!-- Athletic Cyan Glow -->
+    <linearGradient id="primaryCyan" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+
+    <!-- Deep Cobalt -->
+    <linearGradient id="deepCobalt" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1d4ed8"/>
+      <stop offset="100%" stop-color="#1e3a8a"/>
+    </linearGradient>
+
+    <!-- Sleek Silver Slate -->
+    <linearGradient id="slateLight" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e2e8f0"/>
+      <stop offset="100%" stop-color="#94a3b8"/>
+    </linearGradient>
+
+    <linearGradient id="slateDark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#475569"/>
+      <stop offset="100%" stop-color="#1e293b"/>
+    </linearGradient>
+
+    <!-- Inner Shield Rim -->
+    <linearGradient id="rimStroke" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.6"/>
+      <stop offset="100%" stop-color="#1e293b" stop-opacity="0.2"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Squircle Base Canvas -->
+  <rect x="16" y="16" width="480" height="480" rx="112" fill="url(#bg)" stroke="#1e293b" stroke-width="2"/>
+
+  <!-- Minimalist Speed Track Accent Ring -->
+  <circle cx="256" cy="256" r="184" fill="none" stroke="#1e293b" stroke-width="2"/>
+  <circle cx="256" cy="256" r="184" fill="none" stroke="url(#primaryCyan)" stroke-width="3" stroke-dasharray="80 300" stroke-linecap="round"/>
+
+  <!-- Geometric Athletic Panther Emblem (Symmetrical & Sharp) -->
+  <g transform="translate(256, 260) scale(1.35)">
+    <!-- Ears (Outer & Inner) -->
+    <!-- Left Ear -->
+    <polygon points="-75,-55 -95,-115 -40,-85" fill="#1e293b"/>
+    <polygon points="-68,-60 -86,-106 -44,-82" fill="url(#primaryCyan)"/>
+
+    <!-- Right Ear -->
+    <polygon points="75,-55 95,-115 40,-85" fill="#0f172a"/>
+    <polygon points="68,-60 86,-106 44,-82" fill="url(#deepCobalt)"/>
+
+    <!-- Head Crown / Temples -->
+    <polygon points="0,-100 -40,-85 -70,-50 -35,-25 0,-40" fill="#334155"/>
+    <polygon points="0,-100 40,-85 70,-50 35,-25 0,-40" fill="#1e293b"/>
+
+    <!-- Forehead Central Blade (Athletic Chevron) -->
+    <polygon points="0,-95 -14,-45 0,-20 14,-45" fill="url(#slateLight)"/>
+    <polygon points="0,-90 -8,-45 0,-28 8,-45" fill="url(#primaryCyan)"/>
+
+    <!-- Cheeks & Jaw Structure -->
+    <polygon points="-70,-50 -90,-5 -55,30 -35,-25" fill="#1e293b"/>
+    <polygon points="70,-50 90,-5 55,30 35,-25" fill="#0f172a"/>
+
+    <!-- Lower Muzzle & Jaws -->
+    <polygon points="-55,30 -65,70 -30,95 0,105 0,45 -25,25" fill="#1e293b"/>
+    <polygon points="55,30 65,70 30,95 0,105 0,45 25,25" fill="#0f172a"/>
+
+    <!-- Snout Bridge -->
+    <polygon points="0,-20 -18,15 -14,50 0,60 14,50 18,15" fill="#334155"/>
+    <polygon points="0,-20 -14,15 0,50 14,15" fill="url(#slateDark)"/>
+
+    <!-- Nose Triangle -->
+    <polygon points="0,42 -12,56 12,56" fill="url(#primaryCyan)"/>
+
+    <!-- Athletic Sharp Eyes -->
+    <!-- Left Eye -->
+    <polygon points="-44,-24 -20,-14 -32,-9 -50,-17" fill="#38bdf8"/>
+    <polygon points="-40,-22 -24,-15 -34,-12 -46,-18" fill="#ffffff"/>
+    <circle cx="-32" cy="-16" r="2.5" fill="#0284c7"/>
+
+    <!-- Right Eye -->
+    <polygon points="44,-24 20,-14 32,-9 50,-17" fill="#38bdf8"/>
+    <polygon points="40,-22 24,-15 34,-12 46,-18" fill="#ffffff"/>
+    <circle cx="32" cy="-16" r="2.5" fill="#0284c7"/>
+
+    <!-- Cheetah / Panther Dynamic Speed Lines Under Eyes -->
+    <path d="M -26 -6 Q -20 20 -30 52 Q -35 25 -30 -2 Z" fill="url(#primaryCyan)"/>
+    <path d="M 26 -6 Q 20 20 30 52 Q 35 25 30 -2 Z" fill="url(#deepCobalt)"/>
+
+    <!-- Chin / Fang Accent Points -->
+    <polygon points="0,75 -15,90 0,102 15,90" fill="url(#primaryCyan)"/>
+  </g>
+</svg>
