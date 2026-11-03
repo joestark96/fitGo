@@ -48,6 +48,7 @@ export const ProfilePage: React.FC = () => {
   const [gender, setGender] = useState<Gender>('male');
   const [height, setHeight] = useState('170');
   const [targetWeight, setTargetWeight] = useState('68');
+  const [weekStartDay, setWeekStartDay] = useState<number>(1);
 
   const [showToast, setShowToast] = useState(false);
   const [showResetAlert, setShowResetAlert] = useState(false);
@@ -125,6 +126,7 @@ export const ProfilePage: React.FC = () => {
       setGender(profile.gender || 'male');
       setHeight(profile.height ? profile.height.toString() : '170');
       setTargetWeight(profile.targetWeight ? profile.targetWeight.toString() : '');
+      setWeekStartDay(profile.weekStartDay !== undefined ? profile.weekStartDay : 1);
     }
   }, [profile]);
 
@@ -144,7 +146,9 @@ export const ProfilePage: React.FC = () => {
       birthDate,
       gender,
       height: heightNum,
+      initialWeight: profile ? profile.initialWeight : undefined,
       targetWeight: targetWeight ? parseFloat(targetWeight) : undefined,
+      weekStartDay: weekStartDay,
       createdAt: profile ? profile.createdAt : new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -285,7 +289,7 @@ export const ProfilePage: React.FC = () => {
               />
             </IonItem>
 
-            <IonItem lines="none">
+            <IonItem lines="full">
               <IonLabel position="stacked" style={{ fontWeight: 600 }}>
                 🎯 Peso Objetivo (kg)
               </IonLabel>
@@ -298,6 +302,28 @@ export const ProfilePage: React.FC = () => {
               />
               <IonText color="medium" style={{ fontSize: '0.8rem', display: 'block', marginTop: '6px' }}>
                 Meta de peso para el cálculo de progreso e IMC
+              </IonText>
+            </IonItem>
+
+            <IonItem lines="none">
+              <IonLabel position="stacked" style={{ fontWeight: 600 }}>
+                📅 Día de inicio de semana (para informes)
+              </IonLabel>
+              <IonSelect
+                value={weekStartDay}
+                interface="popover"
+                onIonChange={(e) => setWeekStartDay(Number(e.detail.value))}
+              >
+                <IonSelectOption value={1}>Lunes (Recomendado)</IonSelectOption>
+                <IonSelectOption value={0}>Domingo</IonSelectOption>
+                <IonSelectOption value={2}>Martes</IonSelectOption>
+                <IonSelectOption value={3}>Miércoles</IonSelectOption>
+                <IonSelectOption value={4}>Jueves</IonSelectOption>
+                <IonSelectOption value={5}>Viernes</IonSelectOption>
+                <IonSelectOption value={6}>Sábado</IonSelectOption>
+              </IonSelect>
+              <IonText color="medium" style={{ fontSize: '0.8rem', display: 'block', marginTop: '6px' }}>
+                Define qué día comienza la semana en tus estadísticas y gráficas
               </IonText>
             </IonItem>
 

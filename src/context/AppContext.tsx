@@ -114,7 +114,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
   }, []);
 
-  const latestWeight = weightRecords.length > 0 ? weightRecords[0].weightKg : profile?.targetWeight;
+  const latestWeight = weightRecords.length > 0 ? weightRecords[0].weightKg : (profile?.initialWeight ?? profile?.targetWeight);
 
   const calorieRecommendation = useMemo(() => {
     return calculateCalorieRecommendation(profile, latestWeight, activityLevel);

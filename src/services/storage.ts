@@ -553,18 +553,7 @@ export const StorageService = {
         }),
       }));
 
-      // Append default routines if not yet in user's saved routines
-      let hasNewRoutines = false;
-      DEFAULT_ROUTINES.forEach((defR) => {
-        if (!updatedRoutines.some((r) => r.id === defR.id)) {
-          updatedRoutines.push(defR);
-          hasNewRoutines = true;
-        }
-      });
-
-      if (hasNewRoutines) {
-        localStorage.setItem(STORAGE_KEYS.ROUTINES, JSON.stringify(updatedRoutines));
-      }
+      // User routines are preserved as is (deleted routines stay deleted)
 
       return updatedRoutines;
     } catch (e) {
@@ -767,6 +756,95 @@ export const StorageService = {
 };
 
 // BMI (IMC) Utilities
+
+export interface SuggestedTargetWeightInfo {
+  targetWeight: number;
+  diffKg: number;
+  category: string;
+  reason: string;
+}
+
+export function getSuggestedTargetWeight(
+  weightKg: number,
+  heightCm: number
+): SuggestedTargetWeightInfo {
+  if (weightKg <= 0 || heightCm <= 0) {
+    return {
+      targetWeight: 70,
+      diffKg: 0,
+      category: 'Sin datos',
+      reason: 'Ingresa peso y estatura válidos.',
+    };
+  }
+
+  const bmi = calculateBmi(weightKg, heightCm);
+  let diffKg = 0;
+  let reason = '';
+
+  if (bmi >= 25.0) {
+    // Sobrepeso u Obesidad: restar 5 kg
+    diffKg = -5;
+    reason = `Sobrepeso detectado (IMC ${bmi}): Se restan 5 kg para generar un déficit seguro y descenso progresivo.`;
+  } else if (bmi < 18.5) {
+    // Bajo peso: sumar 5 kg
+    diffKg = 5;
+    reason = `Bajo peso detectado (IMC ${bmi}): Se suman 5 kg para recuperación muscular y alcanzar un peso saludable.`;
+  } else {
+    // Peso ideal / normal: 0 kg (mantener peso actual)
+    diffKg = 0;
+    reason = `Peso ideal (IMC ${bmi}): Mantén tu peso actual (0 kg de diferencia) enfocado en tonificación.`;
+  }
+
+  const targetWeight = Number(Math.max(30, weightKg + diffKg).toFixed(1));
+  const bmiCat = getBmiCategory(bmi);
+
+  return {
+    targetWeight,
+    diffKg,
+    category: bmiCat.category,
+    reason,
+  };
+}
+
+
+export const WEEK_DAYS_CONFIG = [
+  { dayIndex: 1, short: 'Lun', full: 'Lunes' },
+  { dayIndex: 2, short: 'Mar', full: 'Martes' },
+  { dayIndex: 3, short: 'Mié', full: 'Miércoles' },
+  { dayIndex: 4, short: 'Jue', full: 'Jueves' },
+  { dayIndex: 5, short: 'Vie', full: 'Viernes' },
+  { dayIndex: 6, short: 'Sáb', full: 'Sábado' },
+  { dayIndex: 0, short: 'Dom', full: 'Domingo' },
+];
+
+export function getStartOfWeek(date: Date, startDay: number = 1): Date {
+  const d = new Date(date);
+  const currentDay = d.getDay(); // 0 is Sunday, 1 is Monday ...
+  const diff = (currentDay - startDay + 7) % 7;
+  const start = new Date(d.getFullYear(), d.getMonth(), d.getDate() - diff);
+  start.setHours(0, 0, 0, 0);
+  return start;
+}
+
+export function getOrderedWeekDayNames(startDay: number = 1): { dayIndex: number; short: string; full: string }[] {
+  const dayMap: Record<number, { short: string; full: string }> = {
+    0: { short: 'Dom', full: 'Domingo' },
+    1: { short: 'Lun', full: 'Lunes' },
+    2: { short: 'Mar', full: 'Martes' },
+    3: { short: 'Mié', full: 'Miércoles' },
+    4: { short: 'Jue', full: 'Jueves' },
+    5: { short: 'Vie', full: 'Viernes' },
+    6: { short: 'Sáb', full: 'Sábado' },
+  };
+
+  const list: { dayIndex: number; short: string; full: string }[] = [];
+  for (let i = 0; i < 7; i++) {
+    const idx = (startDay + i) % 7;
+    list.push({ dayIndex: idx, short: dayMap[idx].short, full: dayMap[idx].full });
+  }
+  return list;
+}
+
 export function calculateBmi(weightKg: number, heightCm: number): number {
   if (weightKg <= 0 || heightCm <= 0) return 0;
   const heightM = heightCm / 100;
@@ -894,7 +972,7 @@ export function calculateCalorieRecommendation(
   latestWeightKg?: number,
   activityLevel: ActivityLevel = 'light'
 ): CalorieRecommendation {
-  const weight = latestWeightKg && latestWeightKg > 0 ? latestWeightKg : profile?.targetWeight || 70;
+  const weight = latestWeightKg && latestWeightKg > 0 ? latestWeightKg : (profile?.initialWeight || profile?.targetWeight || 70);
   const height = profile?.height && profile.height > 0 ? profile.height : 170;
   const age = profile?.birthDate ? calculateAge(profile.birthDate) : 25;
   const gender = profile?.gender || 'male';

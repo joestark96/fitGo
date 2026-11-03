@@ -5,7 +5,9 @@ export interface UserProfile {
   birthDate: string; // YYYY-MM-DD
   gender: Gender;
   height: number; // in cm
+  initialWeight?: number; // in kg
   targetWeight?: number; // in kg
+  weekStartDay?: number; // 0 = Domingo, 1 = Lunes, ..., 6 = Sábado
   createdAt: string;
   updatedAt: string;
 }

@@ -17,6 +17,7 @@ import {
   IonAlert,
   IonText,
   IonChip,
+  IonToast,
 } from '@ionic/react';
 import {
   addOutline,
@@ -47,6 +48,7 @@ export const WorkoutsPage: React.FC = () => {
   const [routineToEdit, setRoutineToEdit] = useState<Routine | null>(null);
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
   const [routineToDelete, setRoutineToDelete] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isCatalogOpen, setIsCatalogOpen] = useState(false);
 
   const handleCreateNew = () => {
@@ -376,10 +378,22 @@ export const WorkoutsPage: React.FC = () => {
               text: 'Eliminar',
               role: 'destructive',
               handler: () => {
-                if (routineToDelete) deleteRoutine(routineToDelete);
+                if (routineToDelete) {
+                  deleteRoutine(routineToDelete);
+                  setToastMessage('Rutina eliminada correctamente.');
+                  setRoutineToDelete(null);
+                }
               },
             },
           ]}
+        />
+
+        <IonToast
+          isOpen={Boolean(toastMessage)}
+          message={toastMessage || ''}
+          duration={2000}
+          onDidDismiss={() => setToastMessage(null)}
+          color="dark"
         />
       </IonContent>
     </IonPage>

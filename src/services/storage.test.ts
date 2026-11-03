@@ -6,6 +6,9 @@ import {
   formatDateDDMMYYYY,
   formatDateDDMM,
   calculateCalorieRecommendation,
+  getSuggestedTargetWeight,
+  getStartOfWeek,
+  getOrderedWeekDayNames,
   StorageService,
   DEFAULT_EXERCISES,
 } from './storage';
@@ -228,5 +231,79 @@ describe('Storage and Fitness Calculations', () => {
       expect(rec.deficitOrSurplus).toBeGreaterThan(0);
     });
   });
-});
 
+  describe('getSuggestedTargetWeight', () => {
+    it('subtracts 5 kg when overweight (BMI >= 25.0)', () => {
+      // 85 kg, 175 cm => BMI 27.8 (Sobrepeso) => 80 kg (-5 kg)
+      const res = getSuggestedTargetWeight(85, 175);
+      expect(res.diffKg).toBe(-5);
+      expect(res.targetWeight).toBe(80);
+      expect(res.category).toBe('Sobrepeso');
+    });
+
+    it('keeps 0 kg difference when ideal weight (18.5 <= BMI < 25.0)', () => {
+      // 68 kg, 175 cm => BMI 22.2 (Peso normal) => 68 kg (0 kg)
+      const res = getSuggestedTargetWeight(68, 175);
+      expect(res.diffKg).toBe(0);
+      expect(res.targetWeight).toBe(68);
+      expect(res.category).toBe('Peso normal');
+    });
+
+    it('adds 5 kg when underweight (BMI < 18.5)', () => {
+      // 50 kg, 175 cm => BMI 16.3 (Bajo peso) => 55 kg (+5 kg)
+      const res = getSuggestedTargetWeight(50, 175);
+      expect(res.diffKg).toBe(5);
+      expect(res.targetWeight).toBe(55);
+      expect(res.category).toBe('Bajo peso');
+    });
+  });
+
+  describe('deleteRoutine persistence', () => {
+    it('permanently deletes routine without auto-resurrecting DEFAULT_ROUTINES', () => {
+      const routines = StorageService.getRoutines();
+      expect(routines.length).toBeGreaterThan(0);
+      const firstId = routines[0].id;
+
+      // Delete the routine
+      const remaining = StorageService.deleteRoutine(firstId);
+      expect(remaining.some((r) => r.id === firstId)).toBe(false);
+
+      // Verify that subsequent getRoutines() calls do not re-add it
+      const afterGet = StorageService.getRoutines();
+      expect(afterGet.some((r) => r.id === firstId)).toBe(false);
+      expect(afterGet.length).toBe(routines.length - 1);
+    });
+  });
+
+  describe('Week start calculations', () => {
+    it('calculates start of week accurately for Monday (1)', () => {
+      // Wednesday 2026-11-04
+      const wednesday = new Date(2026, 10, 4, 15, 30);
+      const mondayStart = getStartOfWeek(wednesday, 1);
+      expect(mondayStart.getDay()).toBe(1); // Monday
+      expect(mondayStart.getDate()).toBe(2); // Nov 2, 2026
+    });
+
+    it('calculates start of week accurately for Sunday (0)', () => {
+      // Wednesday 2026-11-04
+      const wednesday = new Date(2026, 10, 4, 15, 30);
+      const sundayStart = getStartOfWeek(wednesday, 0);
+      expect(sundayStart.getDay()).toBe(0); // Sunday
+      expect(sundayStart.getDate()).toBe(1); // Nov 1, 2026
+    });
+
+    it('orders week day names starting from selected day', () => {
+      const monOrdered = getOrderedWeekDayNames(1);
+      expect(monOrdered[0].short).toBe('Lun');
+      expect(monOrdered[6].short).toBe('Dom');
+
+      const sunOrdered = getOrderedWeekDayNames(0);
+      expect(sunOrdered[0].short).toBe('Dom');
+      expect(sunOrdered[6].short).toBe('Sáb');
+
+      const friOrdered = getOrderedWeekDayNames(5);
+      expect(friOrdered[0].short).toBe('Vie');
+      expect(friOrdered[6].short).toBe('Jue');
+    });
+  });
+});

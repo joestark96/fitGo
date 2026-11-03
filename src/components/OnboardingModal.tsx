@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   IonModal,
   IonHeader,
@@ -15,11 +15,12 @@ import {
   IonText,
   IonCard,
   IonCardContent,
+  IonBadge,
 } from '@ionic/react';
-import { personCircleOutline, checkmarkCircleOutline, sparklesOutline } from 'ionicons/icons';
+import { personCircleOutline, checkmarkCircleOutline, sparklesOutline, refreshOutline } from 'ionicons/icons';
 import { useApp } from '../context/AppContext';
 import { Gender, UserProfile } from '../types';
-import { formatDateDDMMYYYY } from '../services/storage';
+import { getSuggestedTargetWeight } from '../services/storage';
 import { DateInput } from './DateInput';
 
 interface OnboardingModalProps {
@@ -35,8 +36,27 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onComp
   const [gender, setGender] = useState<Gender>('male');
   const [height, setHeight] = useState<string>('170');
   const [initialWeight, setInitialWeight] = useState<string>('70');
-  const [targetWeight, setTargetWeight] = useState<string>('68');
+  const [targetWeight, setTargetWeight] = useState<string>('70');
+  const [weekStartDay, setWeekStartDay] = useState<number>(1);
+  const [hasManualTargetEdited, setHasManualTargetEdited] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
+
+  // Sugerencia inteligente de peso objetivo según IMC (-5 kg sobrepeso, 0 kg ideal, +5 kg bajo peso)
+  const suggestedInfo = useMemo(() => {
+    const w = parseFloat(initialWeight);
+    const h = parseFloat(height);
+    if (!isNaN(w) && !isNaN(h) && w > 0 && h > 0) {
+      return getSuggestedTargetWeight(w, h);
+    }
+    return null;
+  }, [initialWeight, height]);
+
+  // Actualizar automáticamente el peso objetivo si el usuario no lo ha sobreescrito manualmente
+  useEffect(() => {
+    if (suggestedInfo && !hasManualTargetEdited) {
+      setTargetWeight(suggestedInfo.targetWeight.toString());
+    }
+  }, [suggestedInfo, hasManualTargetEdited]);
 
   const handleSubmit = () => {
     if (!name.trim()) {
@@ -54,14 +74,25 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onComp
     }
 
     const weightNum = parseFloat(initialWeight);
+    if (isNaN(weightNum) || weightNum <= 0) {
+      setErrorMessage('Por favor ingresa tu peso inicial válido en kilogramos.');
+      return;
+    }
+
     const targetWeightNum = targetWeight ? parseFloat(targetWeight) : undefined;
+    const finalTargetWeight =
+      targetWeightNum !== undefined && !isNaN(targetWeightNum) && targetWeightNum > 0
+        ? targetWeightNum
+        : suggestedInfo?.targetWeight;
 
     const newProfile: UserProfile = {
       name: name.trim(),
       birthDate,
       gender,
       height: heightNum,
-      targetWeight: !isNaN(weightNum) && weightNum > 0 ? weightNum : targetWeightNum,
+      initialWeight: weightNum,
+      targetWeight: finalTargetWeight,
+      weekStartDay,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -96,7 +127,25 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onComp
           <IonCard color="danger" style={{ margin: '0 0 16px' }}>
             <IonCardContent style={{ padding: '12px' }}>
               <strong>Atención:</strong> {errorMessage}
-            </IonCardContent>
+              <IonItem lines="none">
+              <IonLabel position="stacked" style={{ fontWeight: 600 }}>
+                Día de inicio de semana
+              </IonLabel>
+              <IonSelect
+                value={weekStartDay}
+                interface="popover"
+                onIonChange={(e) => setWeekStartDay(Number(e.detail.value))}
+              >
+                <IonSelectOption value={1}>Lunes (Recomendado)</IonSelectOption>
+                <IonSelectOption value={0}>Domingo</IonSelectOption>
+                <IonSelectOption value={2}>Martes</IonSelectOption>
+                <IonSelectOption value={3}>Miércoles</IonSelectOption>
+                <IonSelectOption value={4}>Jueves</IonSelectOption>
+                <IonSelectOption value={5}>Viernes</IonSelectOption>
+                <IonSelectOption value={6}>Sábado</IonSelectOption>
+              </IonSelect>
+            </IonItem>
+          </IonCardContent>
           </IonCard>
         )}
 
@@ -163,16 +212,66 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onComp
 
             <IonItem lines="none">
               <IonLabel position="stacked" style={{ fontWeight: 600 }}>
-                Peso objetivo (kg) (opcional)
+                Peso objetivo (kg)
               </IonLabel>
               <IonInput
                 type="number"
                 step="0.1"
                 placeholder="Ej. 68.0"
                 value={targetWeight}
-                onIonInput={(e) => setTargetWeight(e.detail.value || '')}
+                onIonInput={(e) => {
+                  setHasManualTargetEdited(true);
+                  setTargetWeight(e.detail.value || '');
+                }}
               />
             </IonItem>
+
+            {/* Banner explicativo del cálculo automático del peso objetivo */}
+            {suggestedInfo && (
+              <div
+                style={{
+                  margin: '8px 0 12px',
+                  padding: '10px 14px',
+                  backgroundColor: 'var(--ion-color-step-50, rgba(255, 255, 255, 0.05))',
+                  borderRadius: '12px',
+                  border: '1px solid var(--ion-color-step-150, rgba(255, 255, 255, 0.1))',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                  <IonBadge
+                    color={
+                      suggestedInfo.diffKg < 0 ? 'warning' : suggestedInfo.diffKg > 0 ? 'tertiary' : 'success'
+                    }
+                    style={{ padding: '4px 8px', fontSize: '0.8rem' }}
+                  >
+                    {suggestedInfo.diffKg < 0
+                      ? '-5 kg (Sobrepeso)'
+                      : suggestedInfo.diffKg > 0
+                      ? '+5 kg (Bajo peso)'
+                      : '0 kg (Peso ideal)'}
+                  </IonBadge>
+
+                  {hasManualTargetEdited && (
+                    <IonButton
+                      fill="clear"
+                      size="small"
+                      color="secondary"
+                      style={{ height: '24px', fontSize: '0.75rem', textTransform: 'none' }}
+                      onClick={() => {
+                        setHasManualTargetEdited(false);
+                        setTargetWeight(suggestedInfo.targetWeight.toString());
+                      }}
+                    >
+                      <IonIcon slot="start" icon={refreshOutline} />
+                      Usar recomendación
+                    </IonButton>
+                  )}
+                </div>
+                <p style={{ margin: '6px 0 0', fontSize: '0.8rem', color: 'var(--ion-color-medium)', lineHeight: 1.35 }}>
+                  {suggestedInfo.reason}
+                </p>
+              </div>
+            )}
           </IonCardContent>
         </IonCard>
 
@@ -199,4 +298,3 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onComp
     </IonModal>
   );
 };
-

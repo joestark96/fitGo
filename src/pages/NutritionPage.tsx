@@ -301,6 +301,11 @@ export const NutritionPage: React.FC = () => {
               <IonBadge color="tertiary" style={{ padding: '4px 8px' }}>
                 Mantenimiento: {calorieRecommendation.tdee} kcal
               </IonBadge>
+              {profile?.targetWeight && (
+                <IonBadge color="warning" style={{ padding: '4px 8px' }}>
+                  🎯 Peso objetivo: {profile.targetWeight} kg
+                </IonBadge>
+              )}
             </div>
 
             {/* Activity Level Selector */}

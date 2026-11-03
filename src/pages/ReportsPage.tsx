@@ -13,6 +13,8 @@ import {
   IonActionSheet,
   IonAlert,
   IonToast,
+  IonSelect,
+  IonSelectOption,
 } from '@ionic/react';
 import {
   ellipsisHorizontal,
@@ -30,6 +32,7 @@ import { MuscleHeatmap } from '../components/MuscleHeatmap';
 import { WeightQuickRegisterModal } from '../components/WeightQuickRegisterModal';
 import { WorkoutPlayerModal } from '../components/WorkoutPlayerModal';
 import { WorkoutSession, Routine } from '../types';
+import { getStartOfWeek, getOrderedWeekDayNames } from '../services/storage';
 
 export const ReportsPage: React.FC = () => {
   const {
@@ -41,7 +44,10 @@ export const ReportsPage: React.FC = () => {
     routines,
     startWorkout,
     deleteWorkoutSession,
+    saveProfile,
   } = useApp();
+
+  const startDay = profile?.weekStartDay !== undefined ? profile.weekStartDay : 1;
 
   // Timeframe selector for muscle heatmap
   const [timeframe, setTimeframe] = useState<'week' | 'month' | 'year' | 'all'>('week');
@@ -143,15 +149,15 @@ export const ReportsPage: React.FC = () => {
       }
     }
 
-    // Sunday of reference week
-    const currentSunday = new Date(refDate.getFullYear(), refDate.getMonth(), refDate.getDate() - refDate.getDay());
-    currentSunday.setHours(0, 0, 0, 0);
+    // Start day of reference week based on profile preference
+    const currentWeekStart = getStartOfWeek(refDate, startDay);
+    currentWeekStart.setHours(0, 0, 0, 0);
 
     const monthNames = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
 
     for (let i = 7; i >= 0; i--) {
-      const wStart = new Date(currentSunday);
-      wStart.setDate(currentSunday.getDate() - i * 7);
+      const wStart = new Date(currentWeekStart);
+      wStart.setDate(currentWeekStart.getDate() - i * 7);
       const wEnd = new Date(wStart);
       wEnd.setDate(wStart.getDate() + 7);
 
@@ -170,7 +176,7 @@ export const ReportsPage: React.FC = () => {
     }
 
     return weeks;
-  }, [workoutSessions]);
+  }, [workoutSessions, startDay]);
 
   const maxWeeklyCount = useMemo(() => {
     const maxVal = Math.max(...weeklyDistribution.map((w) => w.count), 0);
@@ -192,15 +198,13 @@ export const ReportsPage: React.FC = () => {
   // =========================================================================
   const weekDaysInfo = useMemo(() => {
     const today = new Date();
-    const currentDayOfWeek = today.getDay(); // 0 is Sunday
-    const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+    const weekStart = getStartOfWeek(today, startDay);
+    const orderedDayNames = getOrderedWeekDayNames(startDay);
 
-    const sunday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - currentDayOfWeek);
-
-    return dayNames.map((name, idx) => {
-      const d = new Date(sunday.getFullYear(), sunday.getMonth(), sunday.getDate() + idx);
+    return orderedDayNames.map((dayItem, idx) => {
+      const d = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + idx);
       const dayNum = d.getDate();
-      const isToday = idx === currentDayOfWeek;
+      const isToday = toLocalDateKey(d) === toLocalDateKey(today);
 
       const dayKey = toLocalDateKey(d);
       const dayWorkouts = workoutSessions.filter((s) => {
@@ -210,14 +214,14 @@ export const ReportsPage: React.FC = () => {
       const hasWorkout = dayWorkouts.length > 0;
 
       return {
-        shortName: name,
+        shortName: dayItem.short,
         dayNum,
         dateObj: d,
         isToday,
         hasWorkout,
       };
     });
-  }, [workoutSessions]);
+  }, [workoutSessions, startDay]);
 
   const { todayMinutes, weeklyAverageMinutes } = useMemo(() => {
     const todayKey = toLocalDateKey(new Date());
@@ -229,7 +233,7 @@ export const ReportsPage: React.FC = () => {
 
     // Weekly average
     const now = new Date();
-    const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay(), 0, 0, 0, 0);
+    const weekStart = getStartOfWeek(now, startDay);
     const weekSessions = workoutSessions.filter((s) => {
       const d = new Date(s.date || s.completedAt || s.startedAt);
       return !isNaN(d.getTime()) && d >= weekStart;
@@ -241,7 +245,7 @@ export const ReportsPage: React.FC = () => {
       todayMinutes: todayMins,
       weeklyAverageMinutes: weeklyAvg,
     };
-  }, [workoutSessions]);
+  }, [workoutSessions, startDay]);
 
   // Open calendar directly when user taps any day in "Esta semana"
   const handleOpenCalendarForDay = (d?: Date) => {
@@ -482,27 +486,27 @@ export const ReportsPage: React.FC = () => {
     if (monthSessions.length === 0) return [];
 
     const monthsShort = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
-    const groupsMap = new Map<string, { sunday: Date; saturday: Date; sessions: WorkoutSession[] }>();
+    const groupsMap = new Map<string, { weekStart: Date; weekEnd: Date; sessions: WorkoutSession[] }>();
 
     monthSessions.forEach((session) => {
       const d = new Date(session.date || session.completedAt || session.startedAt);
       if (isNaN(d.getTime())) return;
 
-      // Find Sunday of this week (Dom)
-      const sunday = new Date(d.getFullYear(), d.getMonth(), d.getDate() - d.getDay());
-      sunday.setHours(0, 0, 0, 0);
+      // Find start day of this week
+      const weekStart = getStartOfWeek(d, startDay);
+      weekStart.setHours(0, 0, 0, 0);
 
-      // Saturday of this week (Sáb)
-      const saturday = new Date(sunday);
-      saturday.setDate(sunday.getDate() + 6);
-      saturday.setHours(23, 59, 59, 999);
+      // End day of this week (+6 days)
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 6);
+      weekEnd.setHours(23, 59, 59, 999);
 
-      const weekKey = toLocalDateKey(sunday);
+      const weekKey = toLocalDateKey(weekStart);
 
       if (!groupsMap.has(weekKey)) {
         groupsMap.set(weekKey, {
-          sunday,
-          saturday,
+          weekStart,
+          weekEnd,
           sessions: [],
         });
       }
@@ -512,7 +516,7 @@ export const ReportsPage: React.FC = () => {
 
     // Sort weeks descending (most recent week first)
     const sortedGroups = Array.from(groupsMap.entries())
-      .sort((a, b) => b[1].sunday.getTime() - a[1].sunday.getTime())
+      .sort((a, b) => b[1].weekStart.getTime() - a[1].weekStart.getTime())
       .map(([weekKey, data]) => {
         // Sort sessions in this week descending
         const sortedSessions = [...data.sessions].sort((sA, sB) => {
@@ -523,9 +527,9 @@ export const ReportsPage: React.FC = () => {
 
         return {
           weekKey,
-          startDateFormatted: `${data.sunday.getDate()} ${monthsShort[data.sunday.getMonth()]}`,
-          endDateFormatted: `${data.saturday.getDate()} ${monthsShort[data.saturday.getMonth()]}`,
-          yearFormatted: `${data.sunday.getFullYear()}`,
+          startDateFormatted: `${data.weekStart.getDate()} ${monthsShort[data.weekStart.getMonth()]}`,
+          endDateFormatted: `${data.weekEnd.getDate()} ${monthsShort[data.weekEnd.getMonth()]}`,
+          yearFormatted: `${data.weekStart.getFullYear()}`,
           workoutsCount: sortedSessions.length,
           sessions: sortedSessions,
         };
@@ -769,17 +773,49 @@ export const ReportsPage: React.FC = () => {
           {/* ================= CARD 2: ESTA SEMANA =================== */}
           {/* ========================================================= */}
           <div style={{ marginBottom: '22px' }}>
-            <h2
-              style={{
-                fontSize: '1.15rem',
-                fontWeight: 800,
-                color: '#ffffff',
-                margin: '0 0 10px 4px',
-                letterSpacing: '-0.01em',
-              }}
-            >
-              Esta semana
-            </h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '0 4px 10px' }}>
+              <h2
+                style={{
+                  fontSize: '1.15rem',
+                  fontWeight: 800,
+                  color: '#ffffff',
+                  margin: 0,
+                  letterSpacing: '-0.01em',
+                }}
+              >
+                Esta semana
+              </h2>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '0.74rem', color: '#94a3b8' }}>Inicia:</span>
+                <IonSelect
+                  value={startDay}
+                  interface="popover"
+                  onIonChange={(e) => {
+                    const newDay = Number(e.detail.value);
+                    if (profile) {
+                      saveProfile({ ...profile, weekStartDay: newDay });
+                    }
+                  }}
+                  style={{
+                    fontSize: '0.78rem',
+                    color: '#60a5fa',
+                    fontWeight: 700,
+                    padding: '2px 8px',
+                    background: '#10141c',
+                    borderRadius: '8px',
+                    border: '1px solid #1c2433',
+                  }}
+                >
+                  <IonSelectOption value={1}>Lunes</IonSelectOption>
+                  <IonSelectOption value={0}>Domingo</IonSelectOption>
+                  <IonSelectOption value={2}>Martes</IonSelectOption>
+                  <IonSelectOption value={3}>Miércoles</IonSelectOption>
+                  <IonSelectOption value={4}>Jueves</IonSelectOption>
+                  <IonSelectOption value={5}>Viernes</IonSelectOption>
+                  <IonSelectOption value={6}>Sábado</IonSelectOption>
+                </IonSelect>
+              </div>
+            </div>
 
             <div
               style={{
