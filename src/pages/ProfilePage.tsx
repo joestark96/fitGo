@@ -34,7 +34,7 @@ import {
 } from 'ionicons/icons';
 import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
 import { useApp } from '../context/AppContext';
-import { Gender, UserProfile } from '../types';
+import { Gender, UserProfile, APP_VERSION } from '../types';
 import { calculateAge, formatDateDDMMYYYY } from '../services/storage';
 import { DateInput } from '../components/DateInput';
 import { AppHeader } from '../components/AppHeader';
@@ -203,7 +203,7 @@ export const ProfilePage: React.FC = () => {
               marginBottom: '10px',
             }}
           >
-            v1.0.0
+            v{APP_VERSION}
           </div>
 
           <h2 style={{ margin: '0 0 4px', fontWeight: 700, fontSize: '1.35rem', letterSpacing: '-0.3px' }}>
