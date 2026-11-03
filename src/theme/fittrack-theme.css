@@ -1,0 +1,207 @@
+/**
+ * FitTrack - Human-Crafted, Authentic Athletic Design System
+ * Clean, minimal, high-contrast, designed for real-world gym tracking.
+ */
+
+/* ==================== GLOBAL TYPOGRAPHY ==================== */
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  letter-spacing: -0.01em;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  letter-spacing: -0.025em;
+  font-weight: 700;
+}
+
+/* Tabular numerals for weights, reps, timers & calories */
+.tabular-numbers, ion-input input, .metric-value {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ==================== CLEAN APP HEADER ==================== */
+ion-toolbar {
+  --border-width: 0 !important;
+}
+
+ion-header::after {
+  display: none !important;
+}
+
+.fit-navbar {
+  --background: var(--ion-background-color) !important;
+  border-bottom: 1px solid var(--ion-color-step-100, rgba(255, 255, 255, 0.08)) !important;
+  --color: var(--ion-text-color) !important;
+}
+
+/* ==================== CLEAN ATHLETIC TAB BAR ==================== */
+ion-tab-bar {
+  --background: var(--ion-background-color);
+  border-top: 1px solid var(--ion-color-step-100, rgba(255, 255, 255, 0.08));
+  height: 60px;
+  padding: 4px 6px env(safe-area-inset-bottom, 6px);
+}
+
+ion-tab-button {
+  --color: #71717a;
+  --color-selected: var(--ion-color-primary);
+  font-weight: 600;
+  font-size: 0.72rem;
+  letter-spacing: 0.2px;
+  transition: all 0.15s ease;
+}
+
+ion-tab-button ion-icon {
+  font-size: 20px;
+}
+
+ion-tab-button.tab-selected ion-icon {
+  transform: translateY(-1px);
+}
+
+/* ==================== CARDS & CONTAINERS ==================== */
+ion-card {
+  border-radius: 16px !important;
+  box-shadow: none !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  border: 1px solid var(--ion-color-step-100, rgba(255, 255, 255, 0.08)) !important;
+  background: var(--ion-card-background) !important;
+}
+
+.clean-card {
+  border-radius: 16px;
+  background: var(--ion-card-background);
+  border: 1px solid var(--ion-color-step-100, rgba(255, 255, 255, 0.08));
+  padding: 16px;
+}
+
+/* ==================== STAT TILES ==================== */
+.stat-box {
+  background: var(--ion-card-background);
+  border: 1px solid var(--ion-color-step-100, rgba(255, 255, 255, 0.08));
+  border-radius: 14px;
+  padding: 14px 12px;
+  text-align: center;
+}
+
+.stat-value {
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin: 2px 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-title {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--ion-color-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+/* ==================== BUTTONS & PILLS ==================== */
+ion-button {
+  --border-radius: 12px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.1px;
+  text-transform: none !important;
+  font-family: inherit;
+}
+
+ion-badge {
+  border-radius: 6px !important;
+  padding: 4px 8px !important;
+  font-weight: 700 !important;
+  font-size: 0.72rem !important;
+  letter-spacing: 0.3px !important;
+}
+
+/* Clean Exercise Summary Chip */
+.exercise-tag {
+  background: var(--ion-color-step-100, rgba(255, 255, 255, 0.06));
+  border: 1px solid var(--ion-color-step-150, rgba(255, 255, 255, 0.08));
+  padding: 5px 10px;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ion-text-color);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Active workout banner (clean, athletic, non-AI) */
+.active-workout-banner {
+  background: #064e3b !important;
+  border: 1px solid #059669 !important;
+  color: #ecfdf5 !important;
+  border-radius: 16px !important;
+}
+
+/* Inputs & Form styling */
+ion-input, ion-select {
+  --padding-start: 10px;
+  --padding-end: 10px;
+  font-family: inherit;
+  font-weight: 500;
+}
+
+ion-searchbar {
+  --border-radius: 12px !important;
+  --box-shadow: none !important;
+  font-family: inherit;
+}
+
+/* ==================== ACCORDION & DRAG AND DROP ==================== */
+.drag-handle {
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ion-color-medium);
+  padding: 6px;
+  border-radius: 8px;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+  color: var(--ion-color-primary);
+  background: var(--ion-color-step-100);
+}
+
+.drag-over-card {
+  border: 2px dashed var(--ion-color-primary) !important;
+  background: rgba(37, 99, 235, 0.05) !important;
+  transform: scale(1.015);
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.dragging-card {
+  opacity: 0.4 !important;
+}
+
+.accordion-header {
+  cursor: pointer;
+  user-select: none;
+  border-radius: 14px;
+  transition: background 0.15s ease;
+}
+
+.accordion-chevron {
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.accordion-chevron.is-open {
+  transform: rotate(180deg);
+}
