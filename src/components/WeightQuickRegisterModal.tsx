@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { IonModal, IonIcon } from '@ionic/react';
 import { chevronForward, calendarOutline } from 'ionicons/icons';
 import { useApp } from '../context/AppContext';
@@ -11,14 +11,12 @@ interface WeightQuickRegisterModalProps {
   onSaved?: (record: WeightRecord) => void;
 }
 
-const TICK_WIDTH = 10; // 10px per 0.1 step -> 100px per integer unit (e.g. 90 to 91 is 100px)
-
 export const WeightQuickRegisterModal: React.FC<WeightQuickRegisterModalProps> = ({
   isOpen,
   onClose,
   onSaved,
 }) => {
-  const { profile, weightRecords, saveWeightRecord, saveProfile } = useApp();
+  const { profile, weightRecords, saveWeightRecord } = useApp();
 
   const [unit, setUnit] = useState<'kg' | 'lbs'>('kg');
   const [currentVal, setCurrentVal] = useState<number>(90.7);
@@ -31,12 +29,13 @@ export const WeightQuickRegisterModal: React.FC<WeightQuickRegisterModalProps> =
   });
   const [showDatePicker, setShowDatePicker] = useState<boolean>(false);
 
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const isInternalScrollRef = useRef<boolean>(false);
-
-  // Min and max limits depending on active unit
+  // Limits
   const minLimit = unit === 'kg' ? 30 : 66;
   const maxLimit = unit === 'kg' ? 250 : 550;
+
+  // Drag interaction tracking
+  const isDraggingRef = useRef<boolean>(false);
+  const lastXRef = useRef<number>(0);
 
   // Initialize value from existing records when modal opens
   useEffect(() => {
@@ -54,41 +53,66 @@ export const WeightQuickRegisterModal: React.FC<WeightQuickRegisterModalProps> =
         initialKg = profile.targetWeight;
       }
 
-      if (unit === 'kg') {
-        setCurrentVal(Number(initialKg.toFixed(1)));
-      } else {
-        setCurrentVal(Number((initialKg * 2.20462).toFixed(1)));
-      }
+      const initialVal = unit === 'kg'
+        ? Number(initialKg.toFixed(1))
+        : Number((initialKg * 2.20462).toFixed(1));
+
+      setCurrentVal(initialVal);
     }
   }, [isOpen, weightRecords, profile, unit]);
 
-  // Center ruler on current value after modal opens
-  useEffect(() => {
-    if (isOpen && scrollContainerRef.current) {
-      const timer = setTimeout(() => {
-        if (!scrollContainerRef.current) return;
-        const containerWidth = scrollContainerRef.current.clientWidth || 360;
-        const targetScrollLeft = Math.round((currentVal - minLimit) * 10 * TICK_WIDTH);
-        isInternalScrollRef.current = true;
-        scrollContainerRef.current.scrollLeft = targetScrollLeft;
-        setTimeout(() => {
-          isInternalScrollRef.current = false;
-        }, 50);
-      }, 60);
-      return () => clearTimeout(timer);
-    }
-  }, [isOpen, minLimit]);
+  // Touch drag handlers
+  const handleTouchStart = (e: React.TouchEvent) => {
+    isDraggingRef.current = true;
+    lastXRef.current = e.touches[0].clientX;
+  };
 
-  // Handle scroll event on the ruler
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    if (isInternalScrollRef.current) return;
-    const scrollLeft = e.currentTarget.scrollLeft;
-    const rawVal = minLimit + scrollLeft / (10 * TICK_WIDTH);
-    const clamped = Math.min(Math.max(rawVal, minLimit), maxLimit);
-    const rounded = Math.round(clamped * 10) / 10;
-    if (rounded !== currentVal) {
-      setCurrentVal(rounded);
-    }
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDraggingRef.current) return;
+    const currentX = e.touches[0].clientX;
+    const deltaX = currentX - lastXRef.current;
+    lastXRef.current = currentX;
+
+    // 100px = 1.0 unit -> 10px = 0.1 unit -> 1px = 0.01 unit
+    // Dragging finger left moves ruler left (increases value)
+    const deltaUnits = -deltaX / 100;
+    setCurrentVal((prev) => {
+      const newVal = Math.min(Math.max(prev + deltaUnits, minLimit), maxLimit);
+      return Math.round(newVal * 10) / 10;
+    });
+  };
+
+  const handleTouchEnd = () => {
+    isDraggingRef.current = false;
+  };
+
+  // Mouse drag handlers (for testing / desktop)
+  const handleMouseDown = (e: React.MouseEvent) => {
+    isDraggingRef.current = true;
+    lastXRef.current = e.clientX;
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDraggingRef.current) return;
+    const deltaX = e.clientX - lastXRef.current;
+    lastXRef.current = e.clientX;
+    const deltaUnits = -deltaX / 100;
+    setCurrentVal((prev) => {
+      const newVal = Math.min(Math.max(prev + deltaUnits, minLimit), maxLimit);
+      return Math.round(newVal * 10) / 10;
+    });
+  };
+
+  const handleMouseUp = () => {
+    isDraggingRef.current = false;
+  };
+
+  const handleWheel = (e: React.WheelEvent) => {
+    const deltaUnits = (e.deltaX || e.deltaY) > 0 ? 0.1 : -0.1;
+    setCurrentVal((prev) => {
+      const newVal = Math.min(Math.max(prev + deltaUnits, minLimit), maxLimit);
+      return Math.round(newVal * 10) / 10;
+    });
   };
 
   // Switch between KG and LBS
@@ -102,18 +126,6 @@ export const WeightQuickRegisterModal: React.FC<WeightQuickRegisterModalProps> =
     }
     setUnit(newUnit);
     setCurrentVal(converted);
-
-    // Scroll to new converted value
-    const newMin = newUnit === 'kg' ? 30 : 66;
-    setTimeout(() => {
-      if (scrollContainerRef.current) {
-        isInternalScrollRef.current = true;
-        scrollContainerRef.current.scrollLeft = Math.round((converted - newMin) * 10 * TICK_WIDTH);
-        setTimeout(() => {
-          isInternalScrollRef.current = false;
-        }, 50);
-      }
-    }, 40);
   };
 
   // Date label formatting ("Hoy", "Ayer", or "2 nov")
@@ -155,37 +167,114 @@ export const WeightQuickRegisterModal: React.FC<WeightQuickRegisterModalProps> =
 
     saveWeightRecord(record);
 
-    if (profile && profile.targetWeight) {
-      // keep profile intact
-    }
-
     if (onSaved) {
       onSaved(record);
     }
     onClose();
   };
 
-  // Compute visible integer ticks around currentVal (virtualized for 120fps performance)
-  const visibleIntegers = useMemo(() => {
-    const intCenter = Math.floor(currentVal);
-    const startInt = Math.max(minLimit, intCenter - 8);
-    const endInt = Math.min(maxLimit, intCenter + 8);
-    const list: number[] = [];
-    for (let i = startInt; i <= endInt; i++) {
-      list.push(i);
-    }
-    return list;
-  }, [currentVal, minLimit, maxLimit]);
+  // Generate ticks around current value (deterministic, renders on frame 0 with 0 latency)
+  const renderedTicks = useMemo(() => {
+    const baseInt = Math.floor(currentVal);
+    const startInt = Math.max(minLimit, baseInt - 4);
+    const endInt = Math.min(maxLimit, baseInt + 4);
 
-  const totalRulerWidth = (maxLimit - minLimit) * 10 * TICK_WIDTH;
+    const elements: React.ReactNode[] = [];
+
+    for (let intVal = startInt; intVal <= endInt; intVal++) {
+      for (let step = 0; step < 10; step++) {
+        const val = intVal + step * 0.1;
+        if (val < minLimit || val > maxLimit) continue;
+
+        // Position in pixels relative to center needle (100px per integer unit, 10px per 0.1)
+        const x = Math.round((val - currentVal) * 100);
+
+        const isInteger = step === 0;
+        const isHalf = step === 5;
+
+        if (isInteger) {
+          elements.push(
+            <div
+              key={`tick-${intVal}-${step}`}
+              style={{
+                position: 'absolute',
+                left: `${x}px`,
+                top: 0,
+                width: '1.5px',
+                height: '24px',
+                background: '#64748b',
+                transform: 'translateX(-50%)',
+                pointerEvents: 'none',
+              }}
+            />
+          );
+
+          elements.push(
+            <div
+              key={`label-${intVal}`}
+              style={{
+                position: 'absolute',
+                left: `${x}px`,
+                top: '44px',
+                transform: 'translateX(-50%)',
+                fontSize: '12px',
+                fontWeight: 600,
+                color: '#64748b',
+                fontVariantNumeric: 'tabular-nums',
+                textAlign: 'center',
+                width: '36px',
+                pointerEvents: 'none',
+              }}
+            >
+              {intVal}
+            </div>
+          );
+        } else if (isHalf) {
+          elements.push(
+            <div
+              key={`tick-${intVal}-${step}`}
+              style={{
+                position: 'absolute',
+                left: `${x}px`,
+                top: 0,
+                width: '1px',
+                height: '16px',
+                background: '#475569',
+                transform: 'translateX(-50%)',
+                pointerEvents: 'none',
+              }}
+            />
+          );
+        } else {
+          elements.push(
+            <div
+              key={`tick-${intVal}-${step}`}
+              style={{
+                position: 'absolute',
+                left: `${x}px`,
+                top: 0,
+                width: '1px',
+                height: '10px',
+                background: '#334155',
+                transform: 'translateX(-50%)',
+                pointerEvents: 'none',
+              }}
+            />
+          );
+        }
+      }
+    }
+
+    return elements;
+  }, [currentVal, minLimit, maxLimit]);
 
   return (
     <IonModal
       isOpen={isOpen}
       onDidDismiss={onClose}
-      initialBreakpoint={0.52}
-      breakpoints={[0, 0.52]}
-      handle={true}
+      initialBreakpoint={0.62}
+      breakpoints={[0, 0.62]}
+      handle={false}
       style={{
         ['--background' as any]: '#171a22',
         ['--border-radius' as any]: '24px 24px 0 0',
@@ -194,271 +283,212 @@ export const WeightQuickRegisterModal: React.FC<WeightQuickRegisterModalProps> =
       <div
         style={{
           background: '#171a22',
-          height: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between',
-          padding: '20px 20px 28px',
+          padding: '20px 20px 32px',
+          boxSizing: 'border-box',
           color: '#ffffff',
           fontFamily: 'inherit',
           userSelect: 'none',
+          display: 'flex',
+          flexDirection: 'column',
         }}
       >
         {/* ================= TOP ROW: Title & Date Selector ================= */}
-        <div>
-          <div
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '14px',
+          }}
+        >
+          <h2
             style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '20px',
+              fontSize: '1.2rem',
+              fontWeight: 800,
+              color: '#ffffff',
+              margin: 0,
+              letterSpacing: '-0.02em',
             }}
           >
-            <h2
-              style={{
-                fontSize: '1.2rem',
-                fontWeight: 800,
-                color: '#ffffff',
-                margin: 0,
-                letterSpacing: '-0.02em',
-              }}
-            >
-              Peso actual
-            </h2>
+            Peso actual
+          </h2>
 
+          <button
+            type="button"
+            onClick={() => setShowDatePicker(true)}
+            style={{
+              background: '#232a36',
+              border: 'none',
+              borderRadius: '20px',
+              padding: '6px 14px',
+              color: '#cbd5e1',
+              fontSize: '0.86rem',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              cursor: 'pointer',
+            }}
+          >
+            <span>{dateButtonLabel}</span>
+            <IonIcon icon={chevronForward} style={{ fontSize: '0.85rem', color: '#94a3b8' }} />
+          </button>
+        </div>
+
+        {/* ================= UNIT TOGGLE: kg / lbs ================= */}
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
+          <div
+            style={{
+              background: '#222834',
+              borderRadius: '24px',
+              padding: '3px',
+              display: 'flex',
+              alignItems: 'center',
+            }}
+          >
             <button
               type="button"
-              onClick={() => setShowDatePicker(true)}
+              onClick={() => handleToggleUnit('kg')}
               style={{
-                background: '#232a36',
+                background: unit === 'kg' ? '#3b82f6' : 'transparent',
+                color: unit === 'kg' ? '#ffffff' : '#94a3b8',
                 border: 'none',
                 borderRadius: '20px',
-                padding: '6px 14px',
-                color: '#cbd5e1',
-                fontSize: '0.86rem',
-                fontWeight: 600,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
+                padding: '6px 20px',
+                fontSize: '0.92rem',
+                fontWeight: unit === 'kg' ? 700 : 500,
                 cursor: 'pointer',
+                transition: 'background 0.2s, color 0.2s',
               }}
             >
-              <span>{dateButtonLabel}</span>
-              <IonIcon icon={chevronForward} style={{ fontSize: '0.85rem', color: '#94a3b8' }} />
+              kg
             </button>
-          </div>
-
-          {/* ================= UNIT TOGGLE: kg / lbs ================= */}
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '18px' }}>
-            <div
+            <button
+              type="button"
+              onClick={() => handleToggleUnit('lbs')}
               style={{
-                background: '#222834',
-                borderRadius: '24px',
-                padding: '3px',
-                display: 'flex',
-                alignItems: 'center',
+                background: unit === 'lbs' ? '#3b82f6' : 'transparent',
+                color: unit === 'lbs' ? '#ffffff' : '#94a3b8',
+                border: 'none',
+                borderRadius: '20px',
+                padding: '6px 20px',
+                fontSize: '0.92rem',
+                fontWeight: unit === 'lbs' ? 700 : 500,
+                cursor: 'pointer',
+                transition: 'background 0.2s, color 0.2s',
               }}
             >
-              <button
-                type="button"
-                onClick={() => handleToggleUnit('kg')}
-                style={{
-                  background: unit === 'kg' ? '#3b82f6' : 'transparent',
-                  color: unit === 'kg' ? '#ffffff' : '#94a3b8',
-                  border: 'none',
-                  borderRadius: '20px',
-                  padding: '6px 20px',
-                  fontSize: '0.92rem',
-                  fontWeight: unit === 'kg' ? 700 : 500,
-                  cursor: 'pointer',
-                  transition: 'background 0.2s, color 0.2s',
-                }}
-              >
-                kg
-              </button>
-              <button
-                type="button"
-                onClick={() => handleToggleUnit('lbs')}
-                style={{
-                  background: unit === 'lbs' ? '#3b82f6' : 'transparent',
-                  color: unit === 'lbs' ? '#ffffff' : '#94a3b8',
-                  border: 'none',
-                  borderRadius: '20px',
-                  padding: '6px 20px',
-                  fontSize: '0.92rem',
-                  fontWeight: unit === 'lbs' ? 700 : 500,
-                  cursor: 'pointer',
-                  transition: 'background 0.2s, color 0.2s',
-                }}
-              >
-                lbs
-              </button>
-            </div>
-          </div>
-
-          {/* ================= BIG WEIGHT DISPLAY ================= */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'baseline',
-              justifyContent: 'center',
-              marginBottom: '16px',
-              gap: '6px',
-            }}
-          >
-            <span
-              style={{
-                fontSize: '2.8rem',
-                fontWeight: 800,
-                color: '#ffffff',
-                lineHeight: 1,
-                fontVariantNumeric: 'tabular-nums',
-                letterSpacing: '-0.03em',
-              }}
-            >
-              {currentVal.toFixed(1)}
-            </span>
-            <span
-              style={{
-                fontSize: '1.15rem',
-                fontWeight: 600,
-                color: '#e2e8f0',
-              }}
-            >
-              {unit}
-            </span>
-          </div>
-
-          {/* ================= HORIZONTAL RULER PICKER ================= */}
-          <div
-            style={{
-              position: 'relative',
-              width: '100%',
-              height: '84px',
-              overflow: 'hidden',
-              margin: '0 auto',
-            }}
-          >
-            {/* Center Blue Needle Indicator */}
-            <div
-              style={{
-                position: 'absolute',
-                left: '50%',
-                top: '0',
-                width: '3px',
-                height: '40px',
-                background: '#3b82f6',
-                borderRadius: '2px',
-                transform: 'translateX(-50%)',
-                zIndex: 10,
-                pointerEvents: 'none',
-                boxShadow: '0 0 8px rgba(59, 130, 246, 0.7)',
-              }}
-            />
-
-            {/* Scrollable Container with Ruler Ticks */}
-            <div
-              ref={scrollContainerRef}
-              onScroll={handleScroll}
-              style={{
-                width: '100%',
-                height: '100%',
-                overflowX: 'scroll',
-                overflowY: 'hidden',
-                scrollbarWidth: 'none',
-                msOverflowStyle: 'none',
-                WebkitOverflowScrolling: 'touch',
-                position: 'relative',
-              }}
-            >
-              {/* Virtualized inner ruler container */}
-              <div
-                style={{
-                  width: `calc(${totalRulerWidth}px + 100vw)`,
-                  height: '100%',
-                  position: 'relative',
-                  paddingLeft: '50vw',
-                  boxSizing: 'border-box',
-                }}
-              >
-                {visibleIntegers.map((intVal) => {
-                  const leftPos = (intVal - minLimit) * 10 * TICK_WIDTH;
-
-                  return (
-                    <div
-                      key={intVal}
-                      style={{
-                        position: 'absolute',
-                        left: `${leftPos}px`,
-                        top: 0,
-                        width: `${10 * TICK_WIDTH}px`,
-                        height: '100%',
-                      }}
-                    >
-                      {/* Integer tick line */}
-                      <div
-                        style={{
-                          position: 'absolute',
-                          left: 0,
-                          top: 0,
-                          width: '1.5px',
-                          height: '28px',
-                          background: '#64748b',
-                        }}
-                      />
-
-                      {/* Integer number below tick */}
-                      <div
-                        style={{
-                          position: 'absolute',
-                          left: 0,
-                          top: '46px',
-                          transform: 'translateX(-50%)',
-                          fontSize: '0.85rem',
-                          fontWeight: 600,
-                          color: '#64748b',
-                          fontVariantNumeric: 'tabular-nums',
-                          textAlign: 'center',
-                          width: '36px',
-                        }}
-                      >
-                        {intVal}
-                      </div>
-
-                      {/* 9 Minor subdivisions (0.1, 0.2, ..., 0.9) */}
-                      {Array.from({ length: 9 }).map((_, stepIdx) => {
-                        const stepNum = stepIdx + 1;
-                        const isMid = stepNum === 5;
-                        const tickX = stepNum * TICK_WIDTH;
-
-                        return (
-                          <div
-                            key={stepNum}
-                            style={{
-                              position: 'absolute',
-                              left: `${tickX}px`,
-                              top: 0,
-                              width: '1px',
-                              height: isMid ? '20px' : '13px',
-                              background: isMid ? '#475569' : '#334155',
-                            }}
-                          />
-                        );
-                      })}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+              lbs
+            </button>
           </div>
         </div>
 
-        {/* ================= BOTTOM BUTTONS: Cancelar & Guardar ================= */}
+        {/* ================= BIG WEIGHT DISPLAY ================= */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'baseline',
+            justifyContent: 'center',
+            marginBottom: '10px',
+            gap: '6px',
+          }}
+        >
+          <span
+            style={{
+              fontSize: '2.8rem',
+              fontWeight: 800,
+              color: '#ffffff',
+              lineHeight: 1,
+              fontVariantNumeric: 'tabular-nums',
+              letterSpacing: '-0.03em',
+            }}
+          >
+            {currentVal.toFixed(1)}
+          </span>
+          <span
+            style={{
+              fontSize: '1.15rem',
+              fontWeight: 600,
+              color: '#e2e8f0',
+            }}
+          >
+            {unit}
+          </span>
+        </div>
+
+        {/* ================= PURE CSS HORIZONTAL RULER ================= */}
+        <div
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+          onWheel={handleWheel}
+          style={{
+            position: 'relative',
+            width: '100%',
+            height: '66px',
+            overflow: 'hidden',
+            touchAction: 'none',
+            cursor: 'ew-resize',
+            userSelect: 'none',
+            marginBottom: '18px',
+          }}
+        >
+          {/* Center Blue Needle Indicator */}
+          <div
+            style={{
+              position: 'absolute',
+              left: '50%',
+              top: 0,
+              width: '3px',
+              height: '34px',
+              background: '#3b82f6',
+              borderRadius: '2px',
+              transform: 'translateX(-50%)',
+              zIndex: 10,
+              pointerEvents: 'none',
+              boxShadow: '0 0 10px rgba(59, 130, 246, 0.8)',
+            }}
+          />
+          <div
+            style={{
+              position: 'absolute',
+              left: '50%',
+              top: '34px',
+              width: '5px',
+              height: '5px',
+              borderRadius: '50%',
+              background: '#3b82f6',
+              transform: 'translate(-50%, -50%)',
+              zIndex: 11,
+              pointerEvents: 'none',
+            }}
+          />
+
+          {/* Ticks container placed horizontally at 50% */}
+          <div
+            style={{
+              position: 'absolute',
+              left: '50%',
+              top: 0,
+              width: 0,
+              height: '100%',
+              pointerEvents: 'none',
+            }}
+          >
+            {renderedTicks}
+          </div>
+        </div>
+
+        {/* ================= ACTION BUTTONS: Cancelar & Guardar ================= */}
         <div
           style={{
             display: 'flex',
             gap: '14px',
-            marginTop: '22px',
+            marginBottom: '8px',
           }}
         >
           <button
@@ -466,15 +496,17 @@ export const WeightQuickRegisterModal: React.FC<WeightQuickRegisterModalProps> =
             onClick={onClose}
             style={{
               flex: 1,
-              height: '52px',
-              borderRadius: '28px',
+              height: '48px',
+              borderRadius: '24px',
               background: '#232a36',
               border: 'none',
               color: '#ffffff',
               fontSize: '1rem',
               fontWeight: 700,
               cursor: 'pointer',
-              transition: 'background 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
             }}
           >
             Cancelar
@@ -485,8 +517,8 @@ export const WeightQuickRegisterModal: React.FC<WeightQuickRegisterModalProps> =
             onClick={handleSave}
             style={{
               flex: 1,
-              height: '52px',
-              borderRadius: '28px',
+              height: '48px',
+              borderRadius: '24px',
               background: '#3b82f6',
               border: 'none',
               color: '#ffffff',
@@ -494,7 +526,9 @@ export const WeightQuickRegisterModal: React.FC<WeightQuickRegisterModalProps> =
               fontWeight: 700,
               cursor: 'pointer',
               boxShadow: '0 4px 16px rgba(59, 130, 246, 0.4)',
-              transition: 'background 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
             }}
           >
             Guardar
@@ -593,4 +627,3 @@ export const WeightQuickRegisterModal: React.FC<WeightQuickRegisterModalProps> =
 };
 
 export default WeightQuickRegisterModal;
-

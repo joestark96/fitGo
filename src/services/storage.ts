@@ -869,6 +869,10 @@ export function formatDateDDMMYYYY(dateString: string | undefined | null): strin
  */
 export function formatDateDDMM(dateString: string | undefined | null): string {
   if (!dateString) return '';
+  const matchSlash = dateString.match(/^(\d{1,2})\/(\d{1,2})/);
+  if (matchSlash) {
+    return `${matchSlash[1].padStart(2, '0')}/${matchSlash[2].padStart(2, '0')}`;
+  }
   const match = dateString.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (match) {
     const [, , month, day] = match;

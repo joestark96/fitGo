@@ -20,10 +20,68 @@ export const WeightProgressChart: React.FC<WeightProgressChartProps> = ({ record
     );
   }
 
-  // Sort chronologically for chart display (oldest to newest)
-  const sorted = [...records].sort(
-    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-  );
+  // Helper: Extract accurate timestamp in ms regardless of YYYY-MM-DD or DD/MM/YYYY format
+  const getRecordTimestamp = (record: WeightRecord): number => {
+    if (record.date) {
+      const matchSlash = record.date.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+      if (matchSlash) {
+        const d = parseInt(matchSlash[1], 10);
+        const m = parseInt(matchSlash[2], 10) - 1;
+        const y = parseInt(matchSlash[3], 10);
+        const t = new Date(y, m, d).getTime();
+        if (!isNaN(t)) {
+          if (record.createdAt) {
+            const c = new Date(record.createdAt).getTime();
+            if (!isNaN(c)) return t + (c % 86400000);
+          }
+          return t;
+        }
+      }
+
+      const matchIso = record.date.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+      if (matchIso) {
+        const y = parseInt(matchIso[1], 10);
+        const m = parseInt(matchIso[2], 10) - 1;
+        const d = parseInt(matchIso[3], 10);
+        const t = new Date(y, m, d).getTime();
+        if (!isNaN(t)) {
+          if (record.createdAt) {
+            const c = new Date(record.createdAt).getTime();
+            if (!isNaN(c)) return t + (c % 86400000);
+          }
+          return t;
+        }
+      }
+
+      const std = new Date(record.date).getTime();
+      if (!isNaN(std)) return std;
+    }
+
+    if (record.createdAt) {
+      const c = new Date(record.createdAt).getTime();
+      if (!isNaN(c)) return c;
+    }
+
+    const idNum = record.id.match(/\d{10,}/);
+    if (idNum) {
+      return parseInt(idNum[0], 10);
+    }
+
+    return 0;
+  };
+
+  // Sort strictly ascending: oldest records first (left) -> most recent records last (right)
+  const sorted = [...records].sort((a, b) => {
+    const tA = getRecordTimestamp(a);
+    const tB = getRecordTimestamp(b);
+    if (tA !== tB) {
+      return tA - tB;
+    }
+    const cA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const cB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    if (cA !== cB) return cA - cB;
+    return a.id.localeCompare(b.id);
+  });
 
   const weights = sorted.map((r) => r.weightKg);
   const minWeight = Math.floor(Math.min(...weights) - 1);
