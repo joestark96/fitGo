@@ -65,19 +65,20 @@ export const MuscleHeatmap: React.FC<MuscleHeatmapProps> = ({
 
   // Render a detailed anatomical hand with solid palm and 5 distinct splayed fingers
   const renderHand = (cx: number, side: number) => {
-    const s = side; // -1 for left outer, 1 for right outer
+    const s = side; // -1 for left figure arm (lateral is -x), 1 for right figure arm (lateral is +x)
     const wx = cx + s * 54;
     const wy = 196;
 
-    const palm = `M ${wx} ${wy} L ${wx + s * 10} ${wy + 13} L ${wx + s * 5} ${wy + 24} L ${wx - s * 8} ${wy + 22} L ${wx - s * 14} ${wy + 11} Z`;
-    const thumb = `M ${wx - s * 9} ${wy + 8} L ${wx - s * 21} ${wy + 17} L ${wx - s * 20} ${wy + 22} L ${wx - s * 9} ${wy + 13} Z`;
-    const index = `M ${wx - s * 7} ${wy + 21} L ${wx - s * 13} ${wy + 39} L ${wx - s * 9} ${wy + 40} L ${wx - s * 4} ${wy + 22} Z`;
-    const middle = `M ${wx - s * 3} ${wy + 23} L ${wx - s * 6} ${wy + 46} L ${wx - s * 2} ${wy + 47} L ${wx} ${wy + 24} Z`;
-    const ring = `M ${wx + s * 1} ${wy + 24} L ${wx + s * 1} ${wy + 43} L ${wx + s * 5} ${wy + 43} L ${wx + s * 4} ${wy + 23} Z`;
-    const pinky = `M ${wx + s * 5} ${wy + 22} L ${wx + s * 9} ${wy + 37} L ${wx + s * 12} ${wy + 36} L ${wx + s * 8} ${wy + 20} Z`;
+    // In anatomical position, thumb points LATERAL (+s relative to side direction), pinky is MEDIAL (-s)
+    const palm = `M ${wx - s * 4} ${wy} L ${wx + s * 6} ${wy} L ${wx + s * 11} ${wy + 11} L ${wx + s * 7} ${wy + 23} L ${wx - s * 2} ${wy + 25} L ${wx - s * 7} ${wy + 21} L ${wx - s * 7} ${wy + 10} Z`;
+    const thumb = `M ${wx + s * 7} ${wy + 9} L ${wx + s * 20} ${wy + 18} L ${wx + s * 22} ${wy + 26} L ${wx + s * 16} ${wy + 26} L ${wx + s * 5} ${wy + 16} Z`;
+    const index = `M ${wx + s * 5} ${wy + 22} L ${wx + s * 8} ${wy + 40} L ${wx + s * 3} ${wy + 41} L ${wx + s * 1} ${wy + 24} Z`;
+    const middle = `M ${wx + s * 1} ${wy + 24} L ${wx + s * 1} ${wy + 48} L ${wx - s * 4} ${wy + 48} L ${wx - s * 3} ${wy + 24} Z`;
+    const ring = `M ${wx - s * 3} ${wy + 23} L ${wx - s * 4} ${wy + 44} L ${wx - s * 8} ${wy + 44} L ${wx - s * 6} ${wy + 22} Z`;
+    const pinky = `M ${wx - s * 6} ${wy + 21} L ${wx - s * 7} ${wy + 37} L ${wx - s * 12} ${wy + 36} L ${wx - s * 8} ${wy + 17} Z`;
 
     return (
-      <g fill={neutralColor} stroke={strokeColor} strokeWidth="0.8">
+      <g fill={neutralColor} stroke={strokeColor} strokeWidth="1">
         <path d={palm} />
         <path d={thumb} />
         <path d={index} />
@@ -275,34 +276,34 @@ export const MuscleHeatmap: React.FC<MuscleHeatmapProps> = ({
 
                 {/* ================= LONG ATHLETIC LEGS (61% OF TOTAL HEIGHT) -> PIERNAS ================= */}
                 <g onClick={() => toggleMuscle('piernas')} style={{ cursor: 'pointer' }} filter={isSel('piernas') ? 'url(#glow)' : undefined}>
-                  {/* Left Quads */}
-                  <path d={`M ${frontCX - 15} 164 C ${frontCX - 25} 178 ${frontCX - 27} 201 ${frontCX - 24} 225 C ${frontCX - 22} 240 ${frontCX - 18} 253 ${frontCX - 14} 265 L ${frontCX - 9} 265 C ${frontCX - 13} 249 ${frontCX - 16} 228 ${frontCX - 15} 199 L ${frontCX - 9} 174 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
-                  <path d={`M ${frontCX - 9} 174 L ${frontCX - 15} 199 C ${frontCX - 16} 228 ${frontCX - 13} 249 ${frontCX - 9} 265 L ${frontCX - 4} 265 C ${frontCX - 4} 247 ${frontCX - 5} 226 ${frontCX - 5} 199 L ${frontCX - 3} 178 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
-                  <path d={`M ${frontCX - 3} 178 L ${frontCX - 5} 199 C ${frontCX - 5} 226 ${frontCX - 4} 247 ${frontCX - 4} 265 L ${frontCX - 1} 265 C ${frontCX - 0} 249 ${frontCX - 0} 228 ${frontCX - 1} 202 L ${frontCX - 1} 185 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
+                  {/* Left Quads - Athletic sweeping lateral contour */}
+                  <path d={`M ${frontCX - 15} 164 C ${frontCX - 28} 177 ${frontCX - 32} 201 ${frontCX - 29} 226 C ${frontCX - 26} 242 ${frontCX - 20} 254 ${frontCX - 15} 265 L ${frontCX - 10} 265 C ${frontCX - 15} 249 ${frontCX - 19} 228 ${frontCX - 17} 199 L ${frontCX - 10} 174 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
+                  <path d={`M ${frontCX - 10} 174 L ${frontCX - 17} 199 C ${frontCX - 19} 228 ${frontCX - 15} 249 ${frontCX - 10} 265 L ${frontCX - 4} 265 C ${frontCX - 4} 247 ${frontCX - 6} 226 ${frontCX - 6} 199 L ${frontCX - 4} 178 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
+                  <path d={`M ${frontCX - 4} 178 L ${frontCX - 6} 199 C ${frontCX - 6} 226 ${frontCX - 4} 247 ${frontCX - 4} 265 L ${frontCX - 1} 265 C ${frontCX - 0} 249 ${frontCX - 0} 228 ${frontCX - 1} 202 L ${frontCX - 1} 185 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
 
                   {/* Right Quads */}
-                  <path d={`M ${frontCX + 15} 164 C ${frontCX + 25} 178 ${frontCX + 27} 201 ${frontCX + 24} 225 C ${frontCX + 22} 240 ${frontCX + 18} 253 ${frontCX + 14} 265 L ${frontCX + 9} 265 C ${frontCX + 13} 249 ${frontCX + 16} 228 ${frontCX + 15} 199 L ${frontCX + 9} 174 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
-                  <path d={`M ${frontCX + 9} 174 L ${frontCX + 15} 199 C ${frontCX + 17} 228 ${frontCX + 13} 249 ${frontCX + 9} 265 L ${frontCX + 4} 265 C ${frontCX + 4} 247 ${frontCX + 5} 226 ${frontCX + 5} 199 L ${frontCX + 3} 178 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
-                  <path d={`M ${frontCX + 3} 178 L ${frontCX + 5} 199 C ${frontCX + 5} 226 ${frontCX + 4} 247 ${frontCX + 4} 265 L ${frontCX + 1} 265 C ${frontCX + 0} 249 ${frontCX + 0} 228 ${frontCX + 1} 202 L ${frontCX + 1} 185 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
+                  <path d={`M ${frontCX + 15} 164 C ${frontCX + 28} 177 ${frontCX + 32} 201 ${frontCX + 29} 226 C ${frontCX + 26} 242 ${frontCX + 20} 254 ${frontCX + 15} 265 L ${frontCX + 10} 265 C ${frontCX + 15} 249 ${frontCX + 19} 228 ${frontCX + 17} 199 L ${frontCX + 10} 174 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
+                  <path d={`M ${frontCX + 10} 174 L ${frontCX + 17} 199 C ${frontCX + 19} 228 ${frontCX + 15} 249 ${frontCX + 10} 265 L ${frontCX + 4} 265 C ${frontCX + 4} 247 ${frontCX + 6} 226 ${frontCX + 6} 199 L ${frontCX + 4} 178 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
+                  <path d={`M ${frontCX + 4} 178 L ${frontCX + 6} 199 C ${frontCX + 6} 226 ${frontCX + 4} 247 ${frontCX + 4} 265 L ${frontCX + 1} 265 C ${frontCX + 0} 249 ${frontCX + 0} 228 ${frontCX + 1} 202 L ${frontCX + 1} 185 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
 
-                  {/* Left Lower Leg (Calves & Shins) */}
-                  <path d={`M ${frontCX - 13} 283 C ${frontCX - 19} 297 ${frontCX - 19} 315 ${frontCX - 14} 333 L ${frontCX - 8} 366 L ${frontCX - 5} 366 L ${frontCX - 9} 333 C ${frontCX - 12} 317 ${frontCX - 12} 301 ${frontCX - 9} 285 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
-                  <path d={`M ${frontCX - 8} 285 L ${frontCX - 9} 333 L ${frontCX - 5} 366 L ${frontCX - 2} 366 L ${frontCX - 1} 333 C ${frontCX + 1} 317 ${frontCX + 1} 301 ${frontCX - 2} 285 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
+                  {/* Left Lower Leg (Muscular Calves & Shins) */}
+                  <path d={`M ${frontCX - 14} 283 C ${frontCX - 23} 297 ${frontCX - 23} 316 ${frontCX - 16} 334 L ${frontCX - 10} 366 L ${frontCX - 6} 366 L ${frontCX - 10} 333 C ${frontCX - 14} 317 ${frontCX - 14} 301 ${frontCX - 10} 285 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
+                  <path d={`M ${frontCX - 9} 285 L ${frontCX - 10} 333 L ${frontCX - 6} 366 L ${frontCX - 2} 366 L ${frontCX - 1} 333 C ${frontCX + 1} 317 ${frontCX + 1} 301 ${frontCX - 2} 285 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
 
                   {/* Right Lower Leg */}
-                  <path d={`M ${frontCX + 13} 283 C ${frontCX + 19} 297 ${frontCX + 19} 315 ${frontCX + 14} 333 L ${frontCX + 8} 366 L ${frontCX + 5} 366 L ${frontCX + 9} 333 C ${frontCX + 12} 317 ${frontCX + 12} 301 ${frontCX + 9} 285 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
-                  <path d={`M ${frontCX + 8} 285 L ${frontCX + 9} 333 L ${frontCX + 5} 366 L ${frontCX + 2} 366 L ${frontCX + 1} 333 C ${frontCX - 1} 317 ${frontCX - 1} 301 ${frontCX + 2} 285 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
+                  <path d={`M ${frontCX + 14} 283 C ${frontCX + 23} 297 ${frontCX + 23} 316 ${frontCX + 16} 334 L ${frontCX + 10} 366 L ${frontCX + 6} 366 L ${frontCX + 10} 333 C ${frontCX + 14} 317 ${frontCX + 14} 301 ${frontCX + 10} 285 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
+                  <path d={`M ${frontCX + 9} 285 L ${frontCX + 10} 333 L ${frontCX + 6} 366 L ${frontCX + 2} 366 L ${frontCX + 1} 333 C ${frontCX - 1} 317 ${frontCX - 1} 301 ${frontCX + 2} 285 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
                 </g>
 
                 {/* Knees */}
-                <path d={`M ${frontCX - 9} 267 L ${frontCX - 13} 274 L ${frontCX - 9} 281 L ${frontCX - 5} 274 Z`} fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
+                <path d={`M ${frontCX - 10} 267 L ${frontCX - 15} 274 L ${frontCX - 10} 281 L ${frontCX - 5} 274 Z`} fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
                 <path d={`M ${frontCX - 4} 267 L ${frontCX - 4} 276 L ${frontCX - 1} 276 L ${frontCX - 1} 267 Z`} fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
-                <path d={`M ${frontCX + 9} 267 L ${frontCX + 13} 274 L ${frontCX + 9} 281 L ${frontCX + 5} 274 Z`} fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
+                <path d={`M ${frontCX + 10} 267 L ${frontCX + 15} 274 L ${frontCX + 10} 281 L ${frontCX + 5} 274 Z`} fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
                 <path d={`M ${frontCX + 4} 267 L ${frontCX + 4} 276 L ${frontCX + 1} 276 L ${frontCX + 1} 267 Z`} fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
 
                 {/* Feet */}
-                <path d={`M ${frontCX - 10} 368 L ${frontCX - 14} 387 L ${frontCX - 1} 387 L ${frontCX - 2} 368 Z`} fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
-                <path d={`M ${frontCX + 10} 368 L ${frontCX + 14} 387 L ${frontCX + 1} 387 L ${frontCX + 2} 368 Z`} fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
+                <path d={`M ${frontCX - 11} 368 L ${frontCX - 16} 387 L ${frontCX - 1} 387 L ${frontCX - 2} 368 Z`} fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
+                <path d={`M ${frontCX + 11} 368 L ${frontCX + 16} 387 L ${frontCX + 1} 387 L ${frontCX + 2} 368 Z`} fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
               </g>
 
               {/* BACK VIEW (CX = 265) */}
@@ -362,33 +363,33 @@ export const MuscleHeatmap: React.FC<MuscleHeatmapProps> = ({
                 {/* ================= GLUTES & LEGS BACK -> PIERNAS ================= */}
                 <g onClick={() => toggleMuscle('piernas')} style={{ cursor: 'pointer' }} filter={isSel('piernas') ? 'url(#glow)' : undefined}>
                   {/* Gluteus Maximus */}
-                  <path d={`M ${backCX - 2} 186 C ${backCX - 12} 186 ${backCX - 25} 190 ${backCX - 26} 204 C ${backCX - 27} 219 ${backCX - 21} 228 ${backCX - 11} 231 C ${backCX - 5} 232 ${backCX - 2} 225 ${backCX - 2} 214 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
-                  <path d={`M ${backCX + 2} 186 C ${backCX + 12} 186 ${backCX + 25} 190 ${backCX + 26} 204 C ${backCX + 27} 219 ${backCX + 21} 228 ${backCX + 11} 231 C ${backCX + 5} 232 ${backCX + 2} 225 ${backCX + 2} 214 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
+                  <path d={`M ${backCX - 2} 186 C ${backCX - 14} 186 ${backCX - 29} 190 ${backCX - 30} 205 C ${backCX - 31} 220 ${backCX - 24} 229 ${backCX - 12} 232 C ${backCX - 6} 233 ${backCX - 2} 225 ${backCX - 2} 214 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
+                  <path d={`M ${backCX + 2} 186 C ${backCX + 14} 186 ${backCX + 29} 190 ${backCX + 30} 205 C ${backCX + 31} 220 ${backCX + 24} 229 ${backCX + 12} 232 C ${backCX + 6} 233 ${backCX + 2} 225 ${backCX + 2} 214 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
 
                   {/* Hamstrings */}
-                  <path d={`M ${backCX - 25} 213 C ${backCX - 27} 230 ${backCX - 25} 248 ${backCX - 17} 266 L ${backCX - 11} 266 C ${backCX - 16} 248 ${backCX - 18} 230 ${backCX - 17} 216 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
-                  <path d={`M ${backCX - 17} 216 C ${backCX - 18} 230 ${backCX - 16} 248 ${backCX - 11} 266 L ${backCX - 6} 266 C ${backCX - 8} 252 ${backCX - 9} 238 ${backCX - 9} 228 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
+                  <path d={`M ${backCX - 29} 213 C ${backCX - 31} 230 ${backCX - 28} 248 ${backCX - 18} 266 L ${backCX - 12} 266 C ${backCX - 18} 248 ${backCX - 20} 230 ${backCX - 19} 216 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
+                  <path d={`M ${backCX - 19} 216 C ${backCX - 20} 230 ${backCX - 18} 248 ${backCX - 12} 266 L ${backCX - 6} 266 C ${backCX - 8} 252 ${backCX - 9} 238 ${backCX - 9} 228 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
                   <path d={`M ${backCX - 9} 228 C ${backCX - 9} 238 ${backCX - 8} 252 ${backCX - 6} 266 L ${backCX - 1} 266 C ${backCX - 2} 252 ${backCX - 2} 239 ${backCX - 2} 229 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
 
-                  <path d={`M ${backCX + 25} 213 C ${backCX + 27} 230 ${backCX + 25} 248 ${backCX + 17} 266 L ${backCX + 11} 266 C ${backCX + 16} 248 ${backCX + 18} 230 ${backCX + 17} 216 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
-                  <path d={`M ${backCX + 17} 216 C ${backCX + 18} 230 ${backCX + 16} 248 ${backCX + 11} 266 L ${backCX + 6} 266 C ${backCX + 8} 252 ${backCX + 9} 238 ${backCX + 9} 228 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
+                  <path d={`M ${backCX + 29} 213 C ${backCX + 31} 230 ${backCX + 28} 248 ${backCX + 18} 266 L ${backCX + 12} 266 C ${backCX + 18} 248 ${backCX + 20} 230 ${backCX + 19} 216 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
+                  <path d={`M ${backCX + 19} 216 C ${backCX + 20} 230 ${backCX + 18} 248 ${backCX + 12} 266 L ${backCX + 6} 266 C ${backCX + 8} 252 ${backCX + 9} 238 ${backCX + 9} 228 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
                   <path d={`M ${backCX + 9} 228 C ${backCX + 9} 238 ${backCX + 8} 252 ${backCX + 6} 266 L ${backCX + 1} 266 C ${backCX + 2} 252 ${backCX + 2} 239 ${backCX + 2} 229 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
 
-                  {/* Calves Back (Twin Bellies continuous to heel) */}
-                  <path d={`M ${backCX - 13} 282 C ${backCX - 20} 297 ${backCX - 20} 315 ${backCX - 14} 333 L ${backCX - 8} 366 L ${backCX - 5} 366 L ${backCX - 9} 333 C ${backCX - 13} 317 ${backCX - 12} 301 ${backCX - 9} 284 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
-                  <path d={`M ${backCX - 9} 284 L ${backCX - 9} 333 L ${backCX - 5} 366 L ${backCX - 2} 366 L ${backCX - 1} 333 C ${backCX + 1} 317 ${backCX + 1} 301 ${backCX - 3} 284 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
+                  {/* Calves Back (Muscular Twin Bellies continuous to heel) */}
+                  <path d={`M ${backCX - 14} 282 C ${backCX - 24} 297 ${backCX - 24} 316 ${backCX - 16} 334 L ${backCX - 10} 366 L ${backCX - 6} 366 L ${backCX - 10} 333 C ${backCX - 15} 317 ${backCX - 14} 301 ${backCX - 10} 284 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
+                  <path d={`M ${backCX - 10} 284 L ${backCX - 10} 333 L ${backCX - 6} 366 L ${backCX - 2} 366 L ${backCX - 1} 333 C ${backCX + 1} 317 ${backCX + 1} 301 ${backCX - 3} 284 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
 
-                  <path d={`M ${backCX + 13} 282 C ${backCX + 20} 297 ${backCX + 20} 315 ${backCX + 14} 333 L ${backCX + 8} 366 L ${backCX + 5} 366 L ${backCX + 9} 333 C ${backCX + 13} 317 ${backCX + 12} 301 ${backCX + 9} 284 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
-                  <path d={`M ${backCX + 9} 284 L ${backCX + 9} 333 L ${backCX + 5} 366 L ${backCX + 2} 366 L ${backCX + 1} 333 C ${backCX - 1} 317 ${backCX - 1} 301 ${backCX + 3} 284 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
+                  <path d={`M ${backCX + 14} 282 C ${backCX + 24} 297 ${backCX + 24} 316 ${backCX + 16} 334 L ${backCX + 10} 366 L ${backCX + 6} 366 L ${backCX + 10} 333 C ${backCX + 15} 317 ${backCX + 14} 301 ${backCX + 10} 284 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
+                  <path d={`M ${backCX + 10} 284 L ${backCX + 10} 333 L ${backCX + 6} 366 L ${backCX + 2} 366 L ${backCX + 1} 333 C ${backCX - 1} 317 ${backCX - 1} 301 ${backCX + 3} 284 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
                 </g>
 
                 {/* Popliteal Fossa */}
-                <path d={`M ${backCX - 10} 268 L ${backCX - 14} 274 L ${backCX - 10} 280 L ${backCX - 6} 274 Z`} fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
-                <path d={`M ${backCX + 10} 268 L ${backCX + 14} 274 L ${backCX + 10} 280 L ${backCX + 6} 274 Z`} fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
+                <path d={`M ${backCX - 10} 268 L ${backCX - 15} 274 L ${backCX - 10} 280 L ${backCX - 5} 274 Z`} fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
+                <path d={`M ${backCX + 10} 268 L ${backCX + 15} 274 L ${backCX + 10} 280 L ${backCX + 5} 274 Z`} fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
 
                 {/* Calcaneus / Heels */}
-                <path d={`M ${backCX - 10} 368 L ${backCX - 13} 387 L ${backCX - 1} 387 L ${backCX - 3} 368 Z`} fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
-                <path d={`M ${backCX + 10} 368 L ${backCX + 14} 387 L ${backCX + 1} 387 L ${backCX + 3} 368 Z`} fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
+                <path d={`M ${backCX - 11} 368 L ${backCX - 15} 387 L ${backCX - 1} 387 L ${backCX - 3} 368 Z`} fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
+                <path d={`M ${backCX + 11} 368 L ${backCX + 15} 387 L ${backCX + 1} 387 L ${backCX + 3} 368 Z`} fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
               </g>
             </g>
           ) : (
@@ -455,23 +456,23 @@ export const MuscleHeatmap: React.FC<MuscleHeatmapProps> = ({
 
                 {/* ================= FEMALE LONG ATHLETIC LEGS -> PIERNAS ================= */}
                 <g onClick={() => toggleMuscle('piernas')} style={{ cursor: 'pointer' }} filter={isSel('piernas') ? 'url(#glow)' : undefined}>
-                  {/* Left Thigh */}
-                  <path d={`M ${frontCX - 17} 162 C ${frontCX - 26} 178 ${frontCX - 28} 201 ${frontCX - 25} 225 C ${frontCX - 23} 240 ${frontCX - 18} 253 ${frontCX - 14} 265 L ${frontCX - 9} 265 C ${frontCX - 13} 249 ${frontCX - 16} 228 ${frontCX - 14} 199 L ${frontCX - 9} 174 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
+                  {/* Left Thigh - Athletic feminine curve */}
+                  <path d={`M ${frontCX - 17} 162 C ${frontCX - 28} 178 ${frontCX - 30} 201 ${frontCX - 27} 225 C ${frontCX - 24} 240 ${frontCX - 19} 253 ${frontCX - 14} 265 L ${frontCX - 9} 265 C ${frontCX - 13} 249 ${frontCX - 16} 228 ${frontCX - 14} 199 L ${frontCX - 9} 174 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
                   <path d={`M ${frontCX - 9} 174 L ${frontCX - 14} 199 C ${frontCX - 15} 228 ${frontCX - 13} 249 ${frontCX - 9} 265 L ${frontCX - 4} 265 C ${frontCX - 4} 247 ${frontCX - 5} 226 ${frontCX - 5} 199 L ${frontCX - 3} 178 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
                   <path d={`M ${frontCX - 3} 178 L ${frontCX - 5} 199 C ${frontCX - 5} 226 ${frontCX - 4} 247 ${frontCX - 4} 265 L ${frontCX - 1} 265 C ${frontCX - 0} 249 ${frontCX - 0} 228 ${frontCX - 1} 202 L ${frontCX - 1} 185 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
 
                   {/* Right Thigh */}
-                  <path d={`M ${frontCX + 17} 162 C ${frontCX + 26} 178 ${frontCX + 28} 201 ${frontCX + 25} 225 C ${frontCX + 23} 240 ${frontCX + 18} 253 ${frontCX + 14} 265 L ${frontCX + 9} 265 C ${frontCX + 13} 249 ${frontCX + 16} 228 ${frontCX + 14} 199 L ${frontCX + 9} 174 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
+                  <path d={`M ${frontCX + 17} 162 C ${frontCX + 28} 178 ${frontCX + 30} 201 ${frontCX + 27} 225 C ${frontCX + 24} 240 ${frontCX + 19} 253 ${frontCX + 14} 265 L ${frontCX + 9} 265 C ${frontCX + 13} 249 ${frontCX + 16} 228 ${frontCX + 14} 199 L ${frontCX + 9} 174 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
                   <path d={`M ${frontCX + 9} 174 L ${frontCX + 14} 199 C ${frontCX + 15} 228 ${frontCX + 13} 249 ${frontCX + 9} 265 L ${frontCX + 4} 265 C ${frontCX + 4} 247 ${frontCX + 5} 226 ${frontCX + 5} 199 L ${frontCX + 3} 178 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
                   <path d={`M ${frontCX + 3} 178 L ${frontCX + 5} 199 C ${frontCX + 5} 226 ${frontCX + 4} 247 ${frontCX + 4} 265 L ${frontCX + 1} 265 C ${frontCX + 0} 249 ${frontCX + 0} 228 ${frontCX + 1} 202 L ${frontCX + 1} 185 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
 
                   {/* Left Lower Leg */}
-                  <path d={`M ${frontCX - 12} 283 C ${frontCX - 18} 297 ${frontCX - 18} 315 ${frontCX - 13} 333 L ${frontCX - 8} 366 L ${frontCX - 5} 366 L ${frontCX - 8} 333 C ${frontCX - 11} 317 ${frontCX - 11} 301 ${frontCX - 8} 285 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
-                  <path d={`M ${frontCX - 8} 285 L ${frontCX - 8} 333 L ${frontCX - 5} 366 L ${frontCX - 2} 366 L ${frontCX - 1} 333 C ${frontCX + 1} 317 ${frontCX + 1} 301 ${frontCX - 2} 285 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
+                  <path d={`M ${frontCX - 13} 283 C ${frontCX - 20} 297 ${frontCX - 20} 315 ${frontCX - 14} 333 L ${frontCX - 9} 366 L ${frontCX - 5} 366 L ${frontCX - 9} 333 C ${frontCX - 12} 317 ${frontCX - 12} 301 ${frontCX - 9} 285 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
+                  <path d={`M ${frontCX - 8} 285 L ${frontCX - 9} 333 L ${frontCX - 5} 366 L ${frontCX - 2} 366 L ${frontCX - 1} 333 C ${frontCX + 1} 317 ${frontCX + 1} 301 ${frontCX - 2} 285 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
 
                   {/* Right Lower Leg */}
-                  <path d={`M ${frontCX + 12} 283 C ${frontCX + 18} 297 ${frontCX + 18} 315 ${frontCX + 13} 333 L ${frontCX + 8} 366 L ${frontCX + 5} 366 L ${frontCX + 8} 333 C ${frontCX + 11} 317 ${frontCX + 11} 301 ${frontCX + 8} 285 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
-                  <path d={`M ${frontCX + 8} 285 L ${frontCX + 8} 333 L ${frontCX + 5} 366 L ${frontCX + 2} 366 L ${frontCX + 1} 333 C ${frontCX - 1} 317 ${frontCX - 1} 301 ${frontCX + 2} 285 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
+                  <path d={`M ${frontCX + 13} 283 C ${frontCX + 20} 297 ${frontCX + 20} 315 ${frontCX + 14} 333 L ${frontCX + 9} 366 L ${frontCX + 5} 366 L ${frontCX + 9} 333 C ${frontCX + 12} 317 ${frontCX + 12} 301 ${frontCX + 9} 285 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
+                  <path d={`M ${frontCX + 8} 285 L ${frontCX + 9} 333 L ${frontCX + 5} 366 L ${frontCX + 2} 366 L ${frontCX + 1} 333 C ${frontCX - 1} 317 ${frontCX - 1} 301 ${frontCX + 2} 285 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
                 </g>
 
                 {/* Knees */}
@@ -536,20 +537,20 @@ export const MuscleHeatmap: React.FC<MuscleHeatmapProps> = ({
                   <path d={`M ${backCX + 2} 180 C ${backCX + 15} 180 ${backCX + 29} 185 ${backCX + 30} 202 C ${backCX + 31} 218 ${backCX + 24} 230 ${backCX + 12} 233 C ${backCX + 5} 234 ${backCX + 2} 226 ${backCX + 2} 214 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
 
                   {/* Hamstrings */}
-                  <path d={`M ${backCX - 26} 215 C ${backCX - 28} 231 ${backCX - 26} 248 ${backCX - 17} 266 L ${backCX - 11} 266 C ${backCX - 17} 248 ${backCX - 19} 230 ${backCX - 18} 217 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
+                  <path d={`M ${backCX - 28} 215 C ${backCX - 30} 231 ${backCX - 27} 248 ${backCX - 18} 266 L ${backCX - 12} 266 C ${backCX - 17} 248 ${backCX - 19} 230 ${backCX - 18} 217 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
                   <path d={`M ${backCX - 18} 217 C ${backCX - 19} 231 ${backCX - 17} 248 ${backCX - 11} 266 L ${backCX - 6} 266 C ${backCX - 8} 252 ${backCX - 9} 238 ${backCX - 9} 228 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
                   <path d={`M ${backCX - 9} 228 C ${backCX - 9} 238 ${backCX - 8} 252 ${backCX - 6} 266 L ${backCX - 1} 266 C ${backCX - 2} 252 ${backCX - 2} 239 ${backCX - 2} 229 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
 
-                  <path d={`M ${backCX + 26} 215 C ${backCX + 28} 231 ${backCX + 26} 248 ${backCX + 17} 266 L ${backCX + 11} 266 C ${backCX + 16} 248 ${backCX + 18} 230 ${backCX + 17} 217 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
+                  <path d={`M ${backCX + 28} 215 C ${backCX + 30} 231 ${backCX + 27} 248 ${backCX + 18} 266 L ${backCX + 12} 266 C ${backCX + 16} 248 ${backCX + 18} 230 ${backCX + 17} 217 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
                   <path d={`M ${backCX + 18} 217 C ${backCX + 19} 231 ${backCX + 17} 248 ${backCX + 11} 266 L ${backCX + 6} 266 C ${backCX + 8} 252 ${backCX + 9} 238 ${backCX + 9} 228 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
                   <path d={`M ${backCX + 9} 228 C ${backCX + 9} 238 ${backCX + 8} 252 ${backCX + 6} 266 L ${backCX + 1} 266 C ${backCX + 2} 252 ${backCX + 2} 239 ${backCX + 2} 229 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
 
                   {/* Calves Back */}
-                  <path d={`M ${backCX - 12} 282 C ${backCX - 19} 297 ${backCX - 19} 315 ${backCX - 13} 333 L ${backCX - 8} 366 L ${backCX - 5} 366 L ${backCX - 8} 333 C ${backCX - 12} 317 ${backCX - 11} 301 ${backCX - 8} 284 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
-                  <path d={`M ${backCX - 8} 284 L ${backCX - 8} 333 L ${backCX - 5} 366 L ${backCX - 2} 366 L ${backCX - 1} 333 C ${backCX + 1} 317 ${backCX + 1} 301 ${backCX - 3} 284 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
+                  <path d={`M ${backCX - 13} 282 C ${backCX - 21} 297 ${backCX - 21} 315 ${backCX - 14} 333 L ${backCX - 9} 366 L ${backCX - 5} 366 L ${backCX - 9} 333 C ${backCX - 13} 317 ${backCX - 12} 301 ${backCX - 9} 284 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
+                  <path d={`M ${backCX - 8} 284 L ${backCX - 9} 333 L ${backCX - 5} 366 L ${backCX - 2} 366 L ${backCX - 1} 333 C ${backCX + 1} 317 ${backCX + 1} 301 ${backCX - 3} 284 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
 
-                  <path d={`M ${backCX + 12} 282 C ${backCX + 19} 297 ${backCX + 19} 315 ${backCX + 13} 333 L ${backCX + 8} 366 L ${backCX + 5} 366 L ${backCX + 8} 333 C ${backCX + 12} 317 ${backCX + 11} 301 ${backCX + 8} 284 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
-                  <path d={`M ${backCX + 8} 284 L ${backCX + 8} 333 L ${backCX + 5} 366 L ${backCX + 2} 366 L ${backCX + 1} 333 C ${backCX - 1} 317 ${backCX - 1} 301 ${backCX + 3} 284 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
+                  <path d={`M ${backCX + 13} 282 C ${backCX + 21} 297 ${backCX + 21} 315 ${backCX + 14} 333 L ${backCX + 9} 366 L ${backCX + 5} 366 L ${backCX + 9} 333 C ${backCX + 13} 317 ${backCX + 12} 301 ${backCX + 9} 284 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
+                  <path d={`M ${backCX + 8} 284 L ${backCX + 9} 333 L ${backCX + 5} 366 L ${backCX + 2} 366 L ${backCX + 1} 333 C ${backCX - 1} 317 ${backCX - 1} 301 ${backCX + 3} 284 Z`} fill={legsColor} stroke={strokeColor} strokeWidth={sw} />
                 </g>
 
                 {/* Popliteal Fossa */}
