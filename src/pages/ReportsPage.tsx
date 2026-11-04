@@ -1001,6 +1001,7 @@ export const ReportsPage: React.FC = () => {
               <MuscleHeatmap
                 muscleVolumes={timeframeMuscleVolumes}
                 timeframe={timeframeLabel}
+                defaultGender={profile?.gender === 'female' ? 'female' : 'male'}
               />
             </div>
           </div>
