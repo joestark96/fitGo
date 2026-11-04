@@ -20,7 +20,7 @@ export const MuscleHeatmap: React.FC<MuscleHeatmapProps> = ({
 
   const getHeatColor = (group: string): string => {
     const val = muscleVolumes[group] || 0;
-    if (val === 0) return '#2a3444'; // Neutral slate facet
+    if (val === 0) return '#2d3748'; // Neutral slate facet
     const ratio = Math.min(val / maxVal, 1);
     if (ratio > 0.75) return '#3b82f6'; // Bright vibrant blue (Alta)
     if (ratio > 0.45) return '#2563eb'; // Medium blue
@@ -52,8 +52,8 @@ export const MuscleHeatmap: React.FC<MuscleHeatmapProps> = ({
   const shouldersColor = getHeatColor('hombros');
   const armsColor = getHeatColor('brazos');
   const coreColor = getHeatColor('core');
-  const neutralColor = '#2a3444';
-  const strokeColor = '#10141d';
+  const neutralColor = '#2d3748';
+  const strokeColor = '#0f131a';
 
   const isSel = (g: string) => selectedMuscle === g;
   const toggleMuscle = (g: string) => setSelectedMuscle(selectedMuscle === g ? null : g);
@@ -153,7 +153,7 @@ export const MuscleHeatmap: React.FC<MuscleHeatmapProps> = ({
       {/* Anatomical Heatmap SVG */}
       <div style={{ display: 'flex', justifyContent: 'center', position: 'relative' }}>
         <svg
-          viewBox="0 0 340 350"
+          viewBox="0 0 360 330"
           style={{
             width: '100%',
             maxWidth: '360px',
@@ -170,392 +170,382 @@ export const MuscleHeatmap: React.FC<MuscleHeatmapProps> = ({
           {/* ======================= MALE MODEL ======================= */}
           {gender === 'male' ? (
             <g className="male-model">
-              {/* FRONT VIEW */}
+              {/* FRONT VIEW (CX = 95) */}
               <g id="male-front">
-                {/* Head with athletic jawline & chin */}
-                <path d="M 83 24 C 79 25 75 30 75 41 C 75 49 77 56 82 61 L 86 65 L 90 66 L 94 65 L 98 61 C 103 56 105 49 105 41 C 105 30 101 25 97 24 C 94 23 86 23 83 24 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
-                <path d="M 74 39 C 73 43 73 48 75 51 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
-                <path d="M 106 39 C 107 43 107 48 105 51 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
-                {/* Neck */}
-                <path d="M 83 65 L 76 76 L 81 76 L 86 66 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
-                <path d="M 97 65 L 104 76 L 99 76 L 94 66 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
-                <path d="M 88 67 L 86 76 L 94 76 L 92 67 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
+                {/* Head & Neck */}
+                <path d="M 87 22 C 81 23 76 30 76 41 C 76 50 79 58 84 63 L 90 68 L 95 69 L 100 68 L 106 63 C 111 58 114 50 114 41 C 114 30 109 23 103 22 C 99 21 91 21 87 22 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
+                <path d="M 87 67 L 79 79 L 85 79 L 91 68 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
+                <path d="M 103 67 L 111 79 L 105 79 L 99 68 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
+                <path d="M 93 69 L 91 79 L 99 79 L 97 69 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
 
-                {/* Trapezius (Front Slope) -> ESPALDA */}
+                {/* Trapezius Slopes (Front) -> ESPALDA */}
                 <g onClick={() => toggleMuscle('espalda')} style={{ cursor: 'pointer' }} filter={isSel('espalda') ? 'url(#glow)' : undefined}>
-                  <path d="M 74 74 C 67 77 59 82 54 87 L 57 91 C 64 85 74 79 81 77 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 106 74 C 113 77 121 82 126 87 L 123 91 C 116 85 106 79 99 77 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 77 76 C 68 79 56 86 49 93 L 53 98 C 63 90 75 84 84 81 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 113 76 C 122 79 134 86 141 93 L 137 98 C 127 90 115 84 106 81 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
                 </g>
 
-                {/* Deltoids Front/Lateral -> HOMBROS */}
+                {/* Shoulders / Deltoids -> HOMBROS */}
                 <g onClick={() => toggleMuscle('hombros')} style={{ cursor: 'pointer' }} filter={isSel('hombros') ? 'url(#glow)' : undefined}>
-                  <path d="M 53 88 C 45 95 42 105 43 116 C 44 122 47 126 51 127 C 54 121 57 114 58 106 C 59 98 58 92 54 89 Z" fill={shouldersColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 127 88 C 135 95 138 105 137 116 C 136 122 133 126 129 127 C 126 121 123 114 122 106 C 121 98 122 92 126 89 Z" fill={shouldersColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 48 93 C 38 102 35 114 36 126 C 37 132 41 137 47 138 C 51 130 55 121 56 111 C 57 103 55 96 50 94 Z" fill={shouldersColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 142 93 C 152 102 155 114 154 126 C 153 132 149 137 143 138 C 139 130 135 121 134 111 C 133 103 135 96 140 94 Z" fill={shouldersColor} stroke={strokeColor} strokeWidth="1.2" />
                 </g>
 
-                {/* Chest / Pectorals -> PECHO */}
+                {/* Pectorals / Chest -> PECHO */}
                 <g onClick={() => toggleMuscle('pecho')} style={{ cursor: 'pointer' }} filter={isSel('pecho') ? 'url(#glow)' : undefined}>
-                  <path d="M 87 79 C 77 79 66 83 58 92 C 59 103 61 111 64 116 C 73 119 82 118 88 114 Z" fill={chestColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 93 79 C 103 79 114 83 122 92 C 121 103 119 111 116 116 C 107 119 98 118 92 114 Z" fill={chestColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 92 83 C 78 83 63 88 55 99 C 56 113 59 123 64 129 C 74 132 84 131 92 126 Z" fill={chestColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 98 83 C 112 83 127 88 135 99 C 134 113 131 123 126 129 C 116 132 106 131 98 126 Z" fill={chestColor} stroke={strokeColor} strokeWidth="1.2" />
                 </g>
 
                 {/* Arms -> BRAZOS */}
                 <g onClick={() => toggleMuscle('brazos')} style={{ cursor: 'pointer' }} filter={isSel('brazos') ? 'url(#glow)' : undefined}>
-                  {/* Biceps & Triceps Lateral */}
-                  <path d="M 50 128 C 46 133 42 141 38 150 C 42 153 47 153 51 150 C 55 142 56 134 55 128 Z" fill={armsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 43 118 C 39 126 38 134 36 143 L 40 146 C 43 137 46 129 48 123 Z" fill={armsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 130 128 C 134 133 138 141 142 150 C 138 153 133 153 129 150 C 125 142 124 134 125 128 Z" fill={armsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 137 118 C 141 126 142 134 144 143 L 140 146 C 137 137 134 129 132 123 Z" fill={armsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  {/* Forearms */}
-                  <path d="M 38 153 C 33 164 28 176 23 188 C 26 190 29 190 32 188 C 38 176 43 165 46 154 Z" fill={armsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 47 154 C 44 165 39 176 34 188 C 36 190 39 189 42 186 C 47 174 50 164 52 153 Z" fill={armsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 142 153 C 147 164 152 176 157 188 C 154 190 151 190 148 188 C 142 176 137 165 134 154 Z" fill={armsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 133 154 C 136 165 141 176 146 188 C 144 190 141 189 138 186 C 133 174 130 164 128 153 Z" fill={armsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 46 139 C 41 145 37 152 33 160 C 38 163 43 162 47 159 C 52 151 53 144 52 139 Z" fill={armsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 37 128 C 32 137 31 146 30 154 L 35 156 C 38 149 41 140 45 133 Z" fill={armsColor} stroke={strokeColor} strokeWidth="1.2" />
+
+                  <path d="M 144 139 C 149 145 153 152 157 160 C 152 163 147 162 143 159 C 138 151 137 144 138 139 Z" fill={armsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 153 128 C 158 137 159 146 160 154 L 155 156 C 152 149 149 140 145 133 Z" fill={armsColor} stroke={strokeColor} strokeWidth="1.2" />
+
+                  <path d="M 32 162 C 27 172 22 182 17 192 C 20 194 24 194 27 192 C 33 182 38 172 41 162 Z" fill={armsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 42 163 C 38 173 34 183 29 193 C 32 194 35 194 38 191 C 44 181 48 171 49 162 Z" fill={armsColor} stroke={strokeColor} strokeWidth="1.2" />
+
+                  <path d="M 158 162 C 163 172 168 182 173 192 C 170 194 166 194 163 192 C 157 182 152 172 149 162 Z" fill={armsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 148 163 C 152 173 156 183 161 193 C 158 194 155 194 152 191 C 146 181 142 171 141 162 Z" fill={armsColor} stroke={strokeColor} strokeWidth="1.2" />
                 </g>
 
                 {/* Hands */}
-                <path d="M 22 190 L 16 199 L 19 202 L 24 194 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
-                <path d="M 25 192 L 18 205 L 21 207 L 27 193 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
-                <path d="M 27 192 L 22 208 L 24 209 L 29 192 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
-                <path d="M 29 191 L 27 207 L 29 207 L 31 190 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
-                <path d="M 32 189 L 32 203 L 34 202 L 34 188 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
+                <path d="M 16 194 L 9 202 L 12 205 L 17 198 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
+                <path d="M 19 195 L 12 208 L 15 210 L 21 197 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
+                <path d="M 22 195 L 17 210 L 19 211 L 24 196 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
+                <path d="M 25 194 L 22 209 L 24 209 L 27 193 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
+                <path d="M 27 192 L 28 205 L 30 204 L 29 191 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
 
-                <path d="M 158 190 L 164 199 L 161 202 L 156 194 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
-                <path d="M 155 192 L 162 205 L 159 207 L 153 193 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
-                <path d="M 153 192 L 158 208 L 156 209 L 151 192 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
-                <path d="M 151 191 L 153 207 L 151 207 L 149 190 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
-                <path d="M 148 189 L 148 203 L 146 202 L 146 188 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
+                <path d="M 174 194 L 181 202 L 178 205 L 173 198 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
+                <path d="M 171 195 L 178 208 L 175 210 L 169 197 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
+                <path d="M 168 195 L 173 210 L 171 211 L 166 196 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
+                <path d="M 165 194 L 168 209 L 166 209 L 163 193 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
+                <path d="M 163 192 L 162 205 L 160 204 L 161 191 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
 
-                {/* Core / Abs / Serratus -> CORE */}
+                {/* Core / 6-Pack + Obliques -> CORE */}
                 <g onClick={() => toggleMuscle('core')} style={{ cursor: 'pointer' }} filter={isSel('core') ? 'url(#glow)' : undefined}>
-                  <path d="M 87 117 L 75 119 L 75 129 L 87 128 Z" fill={coreColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 93 117 L 105 119 L 105 129 L 93 128 Z" fill={coreColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 87 131 L 76 131 L 76 143 L 87 142 Z" fill={coreColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 93 131 L 104 131 L 104 143 L 93 142 Z" fill={coreColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 87 145 L 77 145 L 78 157 L 87 157 Z" fill={coreColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 93 145 L 103 145 L 102 157 L 93 157 Z" fill={coreColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 87 159 L 79 159 L 84 173 L 87 173 Z" fill={coreColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 93 159 L 101 159 L 96 173 L 93 173 Z" fill={coreColor} stroke={strokeColor} strokeWidth="1.2" />
-                  {/* Serratus / Obliques */}
-                  <path d="M 67 118 C 63 123 62 128 61 133 L 73 130 L 73 121 Z" fill={coreColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 61 135 C 62 142 63 148 65 154 L 74 146 L 74 134 Z" fill={coreColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 66 156 C 68 163 71 169 75 174 L 77 161 L 75 149 Z" fill={coreColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 113 118 C 117 123 118 128 119 133 L 107 130 L 107 121 Z" fill={coreColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 119 135 C 118 142 117 148 115 154 L 106 146 L 106 134 Z" fill={coreColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 114 156 C 112 163 109 169 105 174 L 103 161 L 105 149 Z" fill={coreColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 92 130 L 79 132 L 79 142 L 92 141 Z" fill={coreColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 98 130 L 111 132 L 111 142 L 98 141 Z" fill={coreColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 92 144 L 80 144 L 80 155 L 92 154 Z" fill={coreColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 98 144 L 110 144 L 110 155 L 98 154 Z" fill={coreColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 92 157 L 81 157 L 82 169 L 92 169 Z" fill={coreColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 98 157 L 109 157 L 108 169 L 98 169 Z" fill={coreColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 92 171 L 84 171 L 89 184 L 92 184 Z" fill={coreColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 98 171 L 106 171 L 101 184 L 98 184 Z" fill={coreColor} stroke={strokeColor} strokeWidth="1.2" />
+
+                  <path d="M 68 131 C 63 137 61 143 60 148 L 76 144 L 76 133 Z" fill={coreColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 61 150 C 62 157 65 164 68 170 L 78 161 L 78 149 Z" fill={coreColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 69 172 C 72 178 76 183 81 188 L 83 175 L 80 163 Z" fill={coreColor} stroke={strokeColor} strokeWidth="1.2" />
+
+                  <path d="M 122 131 C 127 137 129 143 130 148 L 114 144 L 114 133 Z" fill={coreColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 129 150 C 128 157 125 164 122 170 L 112 161 L 112 149 Z" fill={coreColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 121 172 C 118 178 114 183 109 188 L 107 175 L 110 163 Z" fill={coreColor} stroke={strokeColor} strokeWidth="1.2" />
                 </g>
 
-                {/* Groin / Pelvis */}
-                <path d="M 88 175 L 85 187 L 95 187 L 92 175 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
+                {/* Pelvis / Groin */}
+                <path d="M 93 185 L 89 197 L 101 197 L 97 185 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
 
                 {/* Legs Front -> PIERNAS */}
                 <g onClick={() => toggleMuscle('piernas')} style={{ cursor: 'pointer' }} filter={isSel('piernas') ? 'url(#glow)' : undefined}>
-                  {/* Quads */}
-                  <path d="M 74 176 C 66 187 63 203 65 220 C 66 228 69 235 72 242 L 75 236 C 73 222 73 204 77 186 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 79 186 C 75 201 75 219 77 235 L 83 239 C 83 225 84 205 85 187 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 87 189 C 86 203 85 221 85 237 L 89 241 C 90 233 90 217 89 199 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 78 187 C 69 198 66 212 68 226 C 69 232 72 238 76 244 L 79 238 C 77 227 77 212 81 197 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 83 197 C 79 210 79 225 81 238 L 87 242 C 87 230 88 214 89 198 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 90 200 C 89 212 89 227 88 240 L 92 244 C 93 236 94 223 93 208 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
 
-                  <path d="M 106 176 C 114 187 117 203 115 220 C 114 228 111 235 108 242 L 105 236 C 107 222 107 204 103 186 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 101 186 C 105 201 105 219 103 235 L 97 239 C 97 225 96 205 95 187 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 93 189 C 94 203 95 221 95 237 L 91 241 C 90 233 90 217 91 199 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 112 187 C 121 198 124 212 122 226 C 121 232 118 238 114 244 L 111 238 C 113 227 113 212 109 197 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 107 197 C 111 210 111 225 109 238 L 103 242 C 103 230 102 214 101 198 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 100 200 C 101 212 101 227 102 240 L 98 244 C 97 236 96 223 97 208 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
 
-                  {/* Calves & Shins */}
-                  <path d="M 78 259 L 75 276 L 76 297 L 79 297 L 80 276 L 81 259 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 72 256 C 67 266 67 278 71 289 L 74 286 C 71 276 72 267 75 258 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 83 258 C 86 267 86 277 83 287 L 81 287 C 82 277 82 267 82 258 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 76 299 L 75 309 L 80 309 L 79 299 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 82 260 L 79 274 L 80 293 L 83 293 L 84 274 L 85 260 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 76 257 C 71 266 71 276 74 286 L 78 283 C 75 275 75 267 79 259 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 87 259 C 90 267 90 276 87 285 L 85 285 C 86 276 86 267 86 259 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 80 295 L 79 304 L 84 304 L 83 295 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
 
-                  <path d="M 102 259 L 105 276 L 104 297 L 101 297 L 100 276 L 99 259 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 108 256 C 113 266 113 278 109 289 L 106 286 C 109 276 108 267 105 258 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 97 258 C 94 267 94 277 97 287 L 99 287 C 98 277 98 267 98 258 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 104 299 L 105 309 L 100 309 L 101 299 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 108 260 L 111 274 L 110 293 L 107 293 L 106 274 L 105 260 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 114 257 C 119 266 119 276 116 286 L 112 283 C 115 275 115 267 111 259 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 103 259 C 100 267 100 276 103 285 L 105 285 C 104 276 104 267 104 259 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 110 295 L 111 304 L 106 304 L 107 295 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
                 </g>
 
                 {/* Knees */}
-                <path d="M 77 244 L 73 250 L 77 256 L 81 250 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
-                <path d="M 83 244 L 82 253 L 86 253 L 87 244 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
-                <path d="M 103 244 L 107 250 L 103 256 L 99 250 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
-                <path d="M 97 244 L 98 253 L 94 253 L 93 244 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
+                <path d="M 81 246 L 77 251 L 81 257 L 85 251 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
+                <path d="M 87 246 L 86 254 L 90 254 L 91 246 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
+                <path d="M 109 246 L 113 251 L 109 257 L 105 251 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
+                <path d="M 103 246 L 104 254 L 100 254 L 99 246 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
 
-                {/* Feet Front */}
-                <path d="M 74 311 L 70 325 L 80 325 L 81 311 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
-                <path d="M 106 311 L 110 325 L 100 325 L 99 311 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
+                {/* Feet */}
+                <path d="M 78 306 L 74 318 L 84 318 L 85 306 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
+                <path d="M 112 306 L 116 318 L 106 318 L 105 306 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
               </g>
 
-              {/* BACK VIEW */}
+              {/* BACK VIEW (CX = 265) */}
               <g id="male-back">
                 {/* Head Back */}
-                <path d="M 243 24 C 239 25 235 30 235 41 C 235 49 237 56 242 61 L 246 65 L 250 66 L 254 65 L 258 61 C 263 56 265 49 265 41 C 265 30 261 25 257 24 C 254 23 246 23 243 24 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
-                <path d="M 247 63 L 246 73 L 254 73 L 253 63 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
+                <path d="M 257 22 C 251 23 246 30 246 41 C 246 50 249 58 254 63 L 260 68 L 265 69 L 270 68 L 276 63 C 281 58 284 50 284 41 C 284 30 279 23 273 22 C 269 21 261 21 257 22 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
+                <path d="M 261 68 L 260 78 L 270 78 L 269 68 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
 
-                {/* Back / Trapezius / Lats -> ESPALDA */}
+                {/* Trapezius / Back / Lats -> ESPALDA */}
                 <g onClick={() => toggleMuscle('espalda')} style={{ cursor: 'pointer' }} filter={isSel('espalda') ? 'url(#glow)' : undefined}>
-                  <path d="M 245 72 L 237 82 L 247 82 L 249 72 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 255 72 L 263 82 L 253 82 L 251 72 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 248 84 L 234 84 C 224 88 215 93 211 99 L 222 101 C 230 95 240 90 248 88 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 252 84 L 266 84 C 276 88 285 93 289 99 L 278 101 C 270 95 260 90 252 88 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 248 90 C 242 99 238 109 237 119 L 248 133 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 252 90 C 258 99 262 109 263 119 L 252 133 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
-                  {/* Scapular */}
-                  <path d="M 221 103 C 228 109 233 116 235 125 L 222 128 C 219 119 219 111 220 104 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 279 103 C 272 109 267 116 265 125 L 278 128 C 281 119 281 111 280 104 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
-                  {/* Lats Wings */}
-                  <path d="M 235 128 C 235 138 236 149 238 159 C 242 162 247 162 247 156 C 246 146 246 136 247 135 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 221 130 C 224 141 227 152 234 162 L 236 160 C 233 149 232 138 232 127 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 265 128 C 265 138 264 149 262 159 C 258 162 253 162 253 156 C 254 146 254 136 253 135 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 279 130 C 276 141 273 152 266 162 L 264 160 C 267 149 268 138 268 127 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
-                  {/* Lower Back */}
-                  <path d="M 245 161 L 243 173 L 248 173 L 248 161 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 255 161 L 257 173 L 252 173 L 252 161 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 260 78 L 251 88 L 262 88 L 263 78 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 270 78 L 279 88 L 268 88 L 267 78 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 263 90 L 247 90 C 235 94 225 100 220 107 L 232 109 C 241 103 253 97 263 95 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 267 90 L 283 90 C 295 94 305 100 310 107 L 298 109 C 289 103 277 97 267 95 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 263 97 C 256 107 251 117 250 128 L 263 142 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 267 97 C 274 107 279 117 280 128 L 267 142 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
+
+                  <path d="M 233 111 C 241 118 247 126 249 135 L 235 138 C 231 129 231 120 232 112 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 297 111 C 289 118 283 126 281 135 L 295 138 C 299 129 299 120 298 112 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
+
+                  <path d="M 249 138 C 249 149 251 160 253 171 C 258 174 263 174 263 167 C 262 157 262 146 263 145 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 233 140 C 237 152 242 163 249 174 L 251 172 C 247 160 245 149 246 137 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 281 138 C 281 149 279 160 277 171 C 272 174 267 174 267 167 C 268 157 268 146 267 145 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 297 140 C 293 152 288 163 281 174 L 279 172 C 283 160 285 149 284 137 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
+
+                  <path d="M 260 173 L 258 186 L 263 186 L 263 173 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 270 173 L 272 186 L 267 186 L 267 173 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
                 </g>
 
                 {/* Rear Deltoids -> HOMBROS */}
                 <g onClick={() => toggleMuscle('hombros')} style={{ cursor: 'pointer' }} filter={isSel('hombros') ? 'url(#glow)' : undefined}>
-                  <path d="M 210 100 C 205 107 203 115 204 124 C 208 125 213 122 216 117 C 218 110 218 104 219 100 Z" fill={shouldersColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 290 100 C 295 107 297 115 296 124 C 292 125 287 122 284 117 C 282 110 282 104 281 100 Z" fill={shouldersColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 219 108 C 212 116 209 125 210 135 C 215 136 221 133 225 127 C 228 119 228 112 227 108 Z" fill={shouldersColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 311 108 C 318 116 321 125 320 135 C 315 136 309 133 305 127 C 302 119 302 112 303 108 Z" fill={shouldersColor} stroke={strokeColor} strokeWidth="1.2" />
                 </g>
 
-                {/* Arms Back (Triceps / Forearms) -> BRAZOS */}
+                {/* Arms Back -> BRAZOS */}
                 <g onClick={() => toggleMuscle('brazos')} style={{ cursor: 'pointer' }} filter={isSel('brazos') ? 'url(#glow)' : undefined}>
-                  <path d="M 203 126 C 199 134 196 142 193 150 C 197 152 202 151 206 148 C 209 140 211 132 212 126 Z" fill={armsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 213 127 C 213 135 211 142 208 149 L 213 151 C 216 143 217 135 216 127 Z" fill={armsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 297 126 C 301 134 304 142 307 150 C 303 152 298 151 294 148 C 291 140 289 132 288 126 Z" fill={armsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 287 127 C 287 135 289 142 292 149 L 287 151 C 284 143 283 135 284 127 Z" fill={armsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  {/* Forearms Back */}
-                  <path d="M 194 153 C 189 163 184 175 179 187 C 182 189 185 189 188 187 C 194 175 199 164 202 154 Z" fill={armsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 203 154 C 200 164 195 175 190 187 C 192 189 195 188 198 185 C 203 174 206 164 208 153 Z" fill={armsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 306 153 C 311 163 316 175 321 187 C 318 189 315 189 312 187 C 306 175 301 164 298 154 Z" fill={armsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 297 154 C 300 164 305 175 310 187 C 308 189 305 188 302 185 C 297 174 294 164 292 153 Z" fill={armsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 209 137 C 204 145 200 153 197 161 C 201 164 207 162 211 159 C 215 151 217 143 218 137 Z" fill={armsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 219 138 C 219 146 217 154 214 161 L 219 163 C 223 155 224 146 223 138 Z" fill={armsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 321 137 C 326 145 330 153 333 161 C 329 164 323 162 319 159 C 315 151 313 143 312 137 Z" fill={armsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 311 138 C 311 146 313 154 316 161 L 311 163 C 307 155 306 146 307 138 Z" fill={armsColor} stroke={strokeColor} strokeWidth="1.2" />
+
+                  <path d="M 198 163 C 192 173 187 184 182 195 C 185 197 189 197 192 195 C 198 184 204 174 207 164 Z" fill={armsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 208 164 C 204 174 199 185 194 196 C 196 198 200 197 203 194 C 209 183 213 173 215 163 Z" fill={armsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 332 163 C 338 173 343 184 348 195 C 345 197 341 197 338 195 C 332 184 326 174 323 164 Z" fill={armsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 322 164 C 326 174 331 185 336 196 C 334 198 330 197 327 194 C 321 183 317 173 315 163 Z" fill={armsColor} stroke={strokeColor} strokeWidth="1.2" />
                 </g>
 
                 {/* Hands Back */}
-                <path d="M 178 189 L 172 198 L 175 201 L 180 193 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
-                <path d="M 181 191 L 174 204 L 177 206 L 183 192 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
-                <path d="M 183 191 L 178 207 L 180 208 L 185 191 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
-                <path d="M 185 190 L 183 206 L 185 206 L 187 189 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
-                <path d="M 188 188 L 188 202 L 190 201 L 190 187 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
+                <path d="M 181 197 L 174 205 L 177 208 L 183 201 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
+                <path d="M 184 198 L 177 211 L 180 213 L 186 200 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
+                <path d="M 187 198 L 182 213 L 184 214 L 189 199 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
+                <path d="M 190 197 L 188 212 L 190 212 L 192 196 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
 
-                <path d="M 322 189 L 328 198 L 325 201 L 320 193 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
-                <path d="M 319 191 L 326 204 L 323 206 L 317 192 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
-                <path d="M 317 191 L 322 207 L 320 208 L 315 191 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
-                <path d="M 315 190 L 317 206 L 315 206 L 313 189 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
-                <path d="M 312 188 L 312 202 L 310 201 L 310 187 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
+                <path d="M 349 197 L 356 205 L 353 208 L 347 201 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
+                <path d="M 346 198 L 353 211 L 350 213 L 344 200 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
+                <path d="M 343 198 L 338 213 L 336 214 L 341 199 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
+                <path d="M 340 197 L 342 212 L 340 212 L 338 196 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
 
-                {/* Glutes, Hamstrings & Calves -> PIERNAS */}
+                {/* Gluteus Maximus, Hamstrings & Calves -> PIERNAS */}
                 <g onClick={() => toggleMuscle('piernas')} style={{ cursor: 'pointer' }} filter={isSel('piernas') ? 'url(#glow)' : undefined}>
-                  {/* Gluteus Maximus */}
-                  <path d="M 248 175 C 241 175 229 177 225 184 C 221 191 221 200 224 208 C 229 214 240 215 248 215 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 252 175 C 259 175 271 177 275 184 C 279 191 279 200 276 208 C 271 214 260 215 252 215 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 263 188 C 255 188 243 190 238 198 C 234 206 234 215 237 224 C 243 231 254 232 263 232 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 267 188 C 275 188 287 190 292 198 C 296 206 296 215 293 224 C 287 231 276 232 267 232 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
 
-                  {/* Hamstrings */}
-                  <path d="M 226 218 C 224 227 226 237 231 246 L 236 244 C 233 236 232 227 233 218 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 235 218 C 235 227 237 236 241 245 L 245 243 C 243 235 242 226 241 218 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 243 218 C 244 226 245 234 247 242 L 247 218 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 239 234 C 237 244 239 254 244 264 L 250 262 C 247 253 246 244 247 234 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 248 234 C 248 244 250 254 254 263 L 259 261 C 257 252 256 242 255 234 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 256 234 C 257 243 258 251 260 260 L 260 234 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
 
-                  <path d="M 274 218 C 276 227 274 237 269 246 L 264 244 C 267 236 268 227 267 218 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 265 218 C 265 227 263 236 259 245 L 255 243 C 257 235 258 226 259 218 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 257 218 C 256 226 255 234 253 242 L 253 218 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 291 234 C 293 244 291 254 286 264 L 280 262 C 283 253 284 244 283 234 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 282 234 C 282 244 280 254 276 263 L 271 261 C 273 252 274 242 275 234 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 274 234 C 273 243 272 251 270 260 L 270 234 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
 
-                  {/* Calves Back (Iconic Split Gastrocnemius bellies) */}
-                  <path d="M 233 257 C 228 266 228 277 231 288 L 236 286 C 234 276 234 267 237 258 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 239 258 C 241 268 241 278 240 288 L 244 288 C 246 278 246 268 243 258 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 236 290 L 235 309 L 241 309 L 240 290 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 246 274 C 241 283 241 294 244 304 L 249 302 C 247 293 247 284 250 275 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 252 275 C 254 285 254 295 253 304 L 257 304 C 259 295 259 285 256 275 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 249 306 L 248 320 L 254 320 L 253 306 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
 
-                  <path d="M 267 257 C 272 266 272 277 269 288 L 264 286 C 266 276 266 267 263 258 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 261 258 C 259 268 259 278 260 288 L 256 288 C 254 278 254 268 257 258 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 264 290 L 265 309 L 259 309 L 260 290 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 284 274 C 289 283 289 294 286 304 L 281 302 C 283 293 283 284 280 275 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 278 275 C 276 285 276 295 277 304 L 273 304 C 271 295 271 285 274 275 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 281 306 L 282 320 L 276 320 L 277 306 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
                 </g>
 
                 {/* Back of Knees */}
-                <path d="M 234 247 L 243 247 L 240 255 L 236 255 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
-                <path d="M 266 247 L 257 247 L 260 255 L 264 255 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
+                <path d="M 247 265 L 257 265 L 254 272 L 249 272 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
+                <path d="M 283 265 L 273 265 L 276 272 L 281 272 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
 
                 {/* Heels */}
-                <path d="M 235 311 L 232 325 L 240 325 L 241 311 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
-                <path d="M 265 311 L 268 325 L 260 325 L 259 311 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
+                <path d="M 248 322 L 245 330 L 253 330 L 254 322 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
+                <path d="M 282 322 L 285 330 L 277 330 L 276 322 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
               </g>
             </g>
           ) : (
             /* ======================= FEMALE MODEL ======================= */
             <g className="female-model">
-              {/* FRONT VIEW */}
+              {/* FRONT VIEW (CX = 95) */}
               <g id="female-front">
-                {/* Head: softer feminine oval */}
-                <path d="M 84 25 C 80 26 77 31 77 41 C 77 48 79 55 83 59 L 87 64 L 90 65 L 93 64 L 97 59 C 101 55 103 48 103 41 C 103 31 100 26 96 25 C 93 24 87 24 84 25 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
-                {/* Slender neck */}
-                <path d="M 84 64 L 79 74 L 83 75 L 87 65 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
-                <path d="M 96 64 L 101 74 L 97 75 L 93 65 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
-                <path d="M 88 66 L 87 75 L 93 75 L 92 66 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
+                <path d="M 88 23 C 83 24 79 30 79 40 C 79 48 81 56 86 61 L 91 66 L 95 67 L 99 66 L 104 61 C 109 56 111 48 111 40 C 111 30 107 24 102 23 C 98 22 92 22 88 23 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
+                <path d="M 88 66 L 82 77 L 87 78 L 92 67 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
+                <path d="M 102 66 L 108 77 L 103 78 L 98 67 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
+                <path d="M 93 68 L 91 78 L 99 78 L 97 68 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
 
-                {/* Trapezius / Clavicle slope -> ESPALDA */}
+                {/* Trapezius -> ESPALDA */}
                 <g onClick={() => toggleMuscle('espalda')} style={{ cursor: 'pointer' }} filter={isSel('espalda') ? 'url(#glow)' : undefined}>
-                  <path d="M 77 73 C 71 76 64 81 60 86 L 63 89 C 69 84 76 79 82 76 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 103 73 C 109 76 116 81 120 86 L 117 89 C 111 84 104 79 98 76 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 80 75 C 72 78 63 84 58 90 L 62 94 C 69 88 78 83 86 80 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 110 75 C 118 78 127 84 132 90 L 128 94 C 121 88 112 83 104 80 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
                 </g>
 
-                {/* Shoulders / Deltoids (athletic, toned feminine) -> HOMBROS */}
+                {/* Deltoids -> HOMBROS */}
                 <g onClick={() => toggleMuscle('hombros')} style={{ cursor: 'pointer' }} filter={isSel('hombros') ? 'url(#glow)' : undefined}>
-                  <path d="M 59 87 C 52 93 50 102 51 112 C 52 117 55 120 58 122 C 61 117 63 111 64 103 C 65 96 64 91 60 88 Z" fill={shouldersColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 121 87 C 128 93 130 102 129 112 C 128 117 125 120 122 122 C 119 117 117 111 116 103 C 115 96 116 91 120 88 Z" fill={shouldersColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 57 91 C 49 98 46 108 47 119 C 48 125 52 129 56 131 C 60 125 62 117 63 108 C 64 100 62 94 58 92 Z" fill={shouldersColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 133 91 C 141 98 144 108 143 119 C 142 125 138 129 134 131 C 130 125 128 117 127 108 C 126 100 128 94 132 92 Z" fill={shouldersColor} stroke={strokeColor} strokeWidth="1.2" />
                 </g>
 
-                {/* Chest / Pectorals / Sports-Bra aesthetic -> PECHO */}
+                {/* Chest / Sports Bra -> PECHO */}
                 <g onClick={() => toggleMuscle('pecho')} style={{ cursor: 'pointer' }} filter={isSel('pecho') ? 'url(#glow)' : undefined}>
-                  <path d="M 87 77 C 79 77 71 81 64 90 C 64 99 66 109 70 115 C 76 117 83 115 88 111 Z" fill={chestColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 93 77 C 101 77 109 81 116 90 C 116 99 114 109 110 115 C 104 117 97 115 92 111 Z" fill={chestColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 92 81 C 81 81 70 86 62 97 C 62 110 65 122 71 129 C 78 132 86 130 92 124 Z" fill={chestColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 98 81 C 109 81 120 86 128 97 C 128 110 125 122 119 129 C 112 132 104 130 98 124 Z" fill={chestColor} stroke={strokeColor} strokeWidth="1.2" />
                 </g>
 
                 {/* Arms -> BRAZOS */}
                 <g onClick={() => toggleMuscle('brazos')} style={{ cursor: 'pointer' }} filter={isSel('brazos') ? 'url(#glow)' : undefined}>
-                  <path d="M 57 123 C 53 129 49 137 46 146 C 49 149 53 148 56 145 C 59 138 61 130 60 124 Z" fill={armsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 51 114 C 48 121 46 130 45 139 L 48 141 C 51 133 53 125 55 119 Z" fill={armsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 123 123 C 127 129 131 137 134 146 C 131 149 127 148 124 145 C 121 138 119 130 120 124 Z" fill={armsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 129 114 C 132 121 134 130 135 139 L 132 141 C 129 133 127 125 125 119 Z" fill={armsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  {/* Forearms */}
-                  <path d="M 45 149 C 41 160 36 172 32 184 C 34 186 37 186 39 184 C 44 173 48 162 51 151 Z" fill={armsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 52 150 C 49 161 45 172 41 184 C 43 186 46 185 48 182 C 53 171 56 161 57 150 Z" fill={armsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 135 149 C 139 160 144 172 148 184 C 146 186 143 186 141 184 C 136 173 132 162 129 151 Z" fill={armsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 128 150 C 131 161 135 172 139 184 C 137 186 134 185 132 182 C 127 171 124 161 123 150 Z" fill={armsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 55 132 C 50 139 46 147 43 156 C 47 159 51 158 55 155 C 59 147 60 139 59 133 Z" fill={armsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 47 122 C 43 130 41 140 40 149 L 44 151 C 47 143 50 134 52 127 Z" fill={armsColor} stroke={strokeColor} strokeWidth="1.2" />
+
+                  <path d="M 135 132 C 140 139 144 147 147 156 C 143 159 139 158 135 155 C 131 147 130 139 131 133 Z" fill={armsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 143 122 C 147 130 149 140 150 149 L 146 151 C 143 143 140 134 138 127 Z" fill={armsColor} stroke={strokeColor} strokeWidth="1.2" />
+
+                  <path d="M 42 159 C 37 170 32 181 27 192 C 30 194 33 194 36 192 C 42 181 46 170 49 160 Z" fill={armsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 50 160 C 47 171 42 182 37 193 C 40 195 43 194 46 191 C 51 180 55 169 56 160 Z" fill={armsColor} stroke={strokeColor} strokeWidth="1.2" />
+
+                  <path d="M 148 159 C 153 170 158 181 163 192 C 160 194 157 194 154 192 C 148 181 144 170 141 160 Z" fill={armsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 140 160 C 143 171 148 182 153 193 C 150 195 147 194 144 191 C 139 180 135 169 134 160 Z" fill={armsColor} stroke={strokeColor} strokeWidth="1.2" />
                 </g>
 
                 {/* Slender Hands */}
-                <path d="M 31 186 L 25 194 L 28 197 L 33 189 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
-                <path d="M 34 187 L 28 199 L 30 201 L 35 188 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
-                <path d="M 36 187 L 32 201 L 34 202 L 38 187 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
-                <path d="M 39 185 L 40 197 L 42 196 L 41 184 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
+                <path d="M 26 194 L 19 203 L 22 206 L 27 198 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
+                <path d="M 29 196 L 23 209 L 26 211 L 31 198 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
+                <path d="M 32 196 L 27 210 L 29 211 L 34 197 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
+                <path d="M 35 194 L 35 208 L 38 207 L 37 193 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
 
-                <path d="M 149 186 L 155 194 L 152 197 L 147 189 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
-                <path d="M 146 187 L 152 199 L 150 201 L 145 188 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
-                <path d="M 144 187 L 148 201 L 146 202 L 142 187 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
-                <path d="M 141 185 L 140 197 L 138 196 L 139 184 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
+                <path d="M 164 194 L 171 203 L 168 206 L 163 198 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
+                <path d="M 161 196 L 167 209 L 164 211 L 159 198 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
+                <path d="M 158 196 L 163 210 L 161 211 L 156 197 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
+                <path d="M 155 194 L 155 208 L 152 207 L 153 193 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
 
-                {/* Core / Slim Feminine Waist -> CORE */}
+                {/* Core / Waist -> CORE */}
                 <g onClick={() => toggleMuscle('core')} style={{ cursor: 'pointer' }} filter={isSel('core') ? 'url(#glow)' : undefined}>
-                  <path d="M 87 114 L 76 116 L 77 127 L 87 126 Z" fill={coreColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 93 114 L 104 116 L 103 127 L 93 126 Z" fill={coreColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 87 128 L 78 129 L 80 142 L 87 141 Z" fill={coreColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 93 128 L 102 129 L 100 142 L 93 141 Z" fill={coreColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 87 143 L 80 144 L 83 158 L 87 158 Z" fill={coreColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 93 143 L 100 144 L 97 158 L 93 158 Z" fill={coreColor} stroke={strokeColor} strokeWidth="1.2" />
-                  {/* Obliques */}
-                  <path d="M 72 117 C 69 123 68 129 68 135 L 75 132 L 75 122 Z" fill={coreColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 68 137 C 68 144 70 152 74 160 L 78 150 L 76 137 Z" fill={coreColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 108 117 C 111 123 112 129 112 135 L 105 132 L 105 122 Z" fill={coreColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 112 137 C 112 144 110 152 106 160 L 102 150 L 104 137 Z" fill={coreColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 92 127 L 79 129 L 81 141 L 92 140 Z" fill={coreColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 98 127 L 111 129 L 109 141 L 98 140 Z" fill={coreColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 92 142 L 82 143 L 84 156 L 92 155 Z" fill={coreColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 98 142 L 108 143 L 106 156 L 98 155 Z" fill={coreColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 92 158 L 84 159 L 88 172 L 92 172 Z" fill={coreColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 98 158 L 106 159 L 102 172 L 98 172 Z" fill={coreColor} stroke={strokeColor} strokeWidth="1.2" />
+
+                  <path d="M 74 130 C 70 137 68 144 69 151 L 79 146 L 77 134 Z" fill={coreColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 69 153 C 70 162 73 171 78 178 L 82 168 L 79 156 Z" fill={coreColor} stroke={strokeColor} strokeWidth="1.2" />
+
+                  <path d="M 116 130 C 120 137 122 144 121 151 L 111 146 L 113 134 Z" fill={coreColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 121 153 C 120 162 117 171 112 178 L 108 168 L 111 156 Z" fill={coreColor} stroke={strokeColor} strokeWidth="1.2" />
                 </g>
 
                 {/* Pelvis & Hips */}
-                <path d="M 88 160 L 85 174 L 95 174 L 92 160 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
-                <path d="M 75 162 C 70 167 66 174 65 182 L 72 181 C 73 174 76 168 79 164 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
-                <path d="M 105 162 C 110 167 114 174 115 182 L 108 181 C 107 174 104 168 101 164 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
+                <path d="M 93 174 L 89 187 L 101 187 L 97 174 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
+                <path d="M 79 176 C 72 182 68 190 67 199 L 75 198 C 76 190 80 183 83 179 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
+                <path d="M 111 176 C 118 182 122 190 123 199 L 115 198 C 114 190 110 183 107 179 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
 
                 {/* Quads & Legs -> PIERNAS */}
                 <g onClick={() => toggleMuscle('piernas')} style={{ cursor: 'pointer' }} filter={isSel('piernas') ? 'url(#glow)' : undefined}>
-                  <path d="M 72 183 C 65 194 63 208 65 222 C 67 229 69 235 73 241 L 76 235 C 73 222 73 206 77 190 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 79 190 C 76 203 76 218 78 233 L 83 237 C 83 224 84 207 85 191 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 87 192 C 86 204 85 220 85 235 L 89 239 C 90 231 90 217 89 201 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 75 200 C 67 211 65 225 67 239 C 69 246 72 252 76 258 L 79 252 C 76 240 76 224 80 208 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 82 208 C 78 221 78 236 80 250 L 85 254 C 86 242 87 225 88 209 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 90 211 C 89 223 88 238 88 252 L 92 256 C 93 248 94 235 93 220 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
 
-                  <path d="M 108 183 C 115 194 117 208 115 222 C 113 229 111 235 107 241 L 104 235 C 107 222 107 206 103 190 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 101 190 C 104 203 104 218 102 233 L 97 237 C 97 224 96 207 95 191 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 93 192 C 94 204 95 220 95 235 L 91 239 C 90 231 90 217 91 201 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 115 200 C 123 211 125 225 123 239 C 121 246 118 252 114 258 L 111 252 C 114 240 114 224 110 208 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 108 208 C 112 221 112 236 110 250 L 105 254 C 104 242 103 225 102 209 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 100 211 C 101 223 102 238 102 252 L 98 256 C 97 248 96 235 97 220 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
 
-                  {/* Calves & Shins */}
-                  <path d="M 78 258 L 76 275 L 77 296 L 80 296 L 80 275 L 81 258 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 73 256 C 69 265 69 276 72 287 L 75 285 C 73 275 73 266 75 258 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 83 258 C 85 267 85 276 83 286 L 81 286 C 82 276 82 267 82 258 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 77 298 L 76 308 L 80 308 L 79 298 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 81 273 L 79 288 L 80 306 L 83 306 L 83 288 L 84 273 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 76 271 C 72 280 72 290 75 300 L 78 298 C 76 289 76 281 78 273 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 86 273 C 88 281 88 290 86 299 L 84 299 C 85 290 85 281 85 273 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 80 308 L 79 317 L 83 317 L 82 308 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
 
-                  <path d="M 102 258 L 104 275 L 103 296 L 100 296 L 100 275 L 99 258 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 107 256 C 111 265 111 276 108 287 L 105 285 C 107 275 107 266 105 258 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 97 258 C 95 267 95 276 97 286 L 99 286 C 98 276 98 267 98 258 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 103 298 L 104 308 L 100 308 L 101 298 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 109 273 L 111 288 L 110 306 L 107 306 L 107 288 L 106 273 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 114 271 C 118 280 118 290 115 300 L 112 298 C 114 289 114 281 112 273 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 104 273 C 102 281 102 290 104 299 L 106 299 C 105 290 105 281 105 273 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 110 308 L 111 317 L 107 317 L 108 308 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
                 </g>
 
                 {/* Knees */}
-                <path d="M 78 243 L 74 249 L 78 255 L 82 249 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
-                <path d="M 102 243 L 106 249 L 102 255 L 98 249 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
+                <path d="M 81 260 L 77 265 L 81 271 L 85 265 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
+                <path d="M 109 260 L 113 265 L 109 271 L 105 265 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
 
                 {/* Feet */}
-                <path d="M 75 310 L 72 324 L 80 324 L 81 310 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
-                <path d="M 105 310 L 108 324 L 100 324 L 99 310 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
+                <path d="M 78 319 L 75 330 L 83 330 L 84 319 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
+                <path d="M 112 319 L 115 330 L 107 330 L 106 319 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
               </g>
 
-              {/* BACK VIEW */}
+              {/* BACK VIEW (CX = 265) */}
               <g id="female-back">
-                {/* Head Back */}
-                <path d="M 244 25 C 240 26 237 31 237 41 C 237 48 239 55 243 59 L 247 64 L 250 65 L 253 64 L 257 59 C 261 55 263 48 263 41 C 263 31 260 26 256 25 C 253 24 247 24 244 25 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
-                <path d="M 247 64 L 246 73 L 254 73 L 253 64 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
+                <path d="M 258 23 C 253 24 249 30 249 40 C 249 48 251 56 256 61 L 261 66 L 265 67 L 269 66 L 274 61 C 279 56 281 48 281 40 C 281 30 277 24 272 23 C 268 22 262 22 258 23 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
+                <path d="M 262 67 L 261 77 L 269 77 L 268 67 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
 
                 {/* Trapezius & Lats -> ESPALDA */}
                 <g onClick={() => toggleMuscle('espalda')} style={{ cursor: 'pointer' }} filter={isSel('espalda') ? 'url(#glow)' : undefined}>
-                  <path d="M 245 73 L 238 82 L 247 82 L 248 73 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 255 73 L 262 82 L 253 82 L 252 73 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 248 84 L 235 84 C 227 88 220 93 216 98 L 225 100 C 232 95 240 90 248 88 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 252 84 L 265 84 C 273 88 280 93 284 98 L 275 100 C 268 95 260 90 252 88 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 248 90 C 243 98 240 108 239 117 L 248 131 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 252 90 C 257 98 260 108 261 117 L 252 131 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
-                  {/* Scapular */}
-                  <path d="M 224 102 C 230 108 234 115 236 123 L 225 126 C 223 118 223 110 224 103 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 276 102 C 270 108 266 115 264 123 L 275 126 C 277 118 277 110 276 103 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
-                  {/* Lats Wings */}
-                  <path d="M 236 126 C 236 135 237 145 239 155 C 243 158 247 158 247 152 C 246 143 246 134 247 133 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 225 128 C 227 138 230 148 236 157 L 238 155 C 235 146 234 136 234 126 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 264 126 C 264 135 263 145 261 155 C 257 158 253 158 253 152 C 254 143 254 134 253 133 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 275 128 C 273 138 270 148 264 157 L 262 155 C 265 146 266 136 266 126 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
-                  {/* Lower Back */}
-                  <path d="M 246 157 L 244 167 L 248 167 L 248 157 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 254 157 L 256 167 L 252 167 L 252 157 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 260 77 L 253 86 L 262 86 L 263 77 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 270 77 L 277 86 L 268 86 L 267 77 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 263 88 L 249 88 C 240 92 232 97 228 103 L 238 105 C 246 99 255 94 263 92 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 267 88 L 281 88 C 290 92 298 97 302 103 L 292 105 C 284 99 275 94 267 92 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 263 95 C 257 103 254 113 253 122 L 263 134 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 267 95 C 273 103 276 113 277 122 L 267 134 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
+
+                  <path d="M 237 107 C 244 113 248 120 250 128 L 238 131 C 235 123 235 115 236 108 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 293 107 C 286 113 282 120 280 128 L 292 131 C 295 123 295 115 294 108 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
+
+                  <path d="M 250 131 C 250 140 251 150 253 160 C 257 163 261 163 261 157 C 260 148 260 139 261 138 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 238 133 C 241 143 244 153 250 162 L 252 160 C 249 151 247 141 248 131 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 280 131 C 280 140 279 150 277 160 C 273 163 269 163 269 157 C 270 148 270 139 269 138 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 292 133 C 289 143 286 153 280 162 L 278 160 C 281 151 283 141 282 131 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
+
+                  <path d="M 261 162 L 259 172 L 263 172 L 263 162 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 269 162 L 271 172 L 267 172 L 267 162 Z" fill={backColor} stroke={strokeColor} strokeWidth="1.2" />
                 </g>
 
                 {/* Rear Delts -> HOMBROS */}
                 <g onClick={() => toggleMuscle('hombros')} style={{ cursor: 'pointer' }} filter={isSel('hombros') ? 'url(#glow)' : undefined}>
-                  <path d="M 215 99 C 211 106 209 113 210 121 C 214 122 218 119 221 115 C 223 109 223 103 223 99 Z" fill={shouldersColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 285 99 C 289 106 291 113 290 121 C 286 122 282 119 279 115 C 277 109 277 103 277 99 Z" fill={shouldersColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 227 104 C 222 111 220 119 221 127 C 226 128 230 125 233 120 C 235 113 235 107 235 104 Z" fill={shouldersColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 303 104 C 308 111 310 119 309 127 C 304 128 300 125 297 120 C 295 113 295 107 295 104 Z" fill={shouldersColor} stroke={strokeColor} strokeWidth="1.2" />
                 </g>
 
                 {/* Arms Back -> BRAZOS */}
                 <g onClick={() => toggleMuscle('brazos')} style={{ cursor: 'pointer' }} filter={isSel('brazos') ? 'url(#glow)' : undefined}>
-                  <path d="M 209 123 C 205 130 202 138 200 146 C 203 148 207 147 211 144 C 213 137 215 130 216 124 Z" fill={armsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 291 123 C 295 130 298 138 300 146 C 297 148 293 147 289 144 C 287 137 285 130 284 124 Z" fill={armsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 200 149 C 196 159 192 171 188 183 C 190 185 193 185 195 183 C 200 172 204 161 207 150 Z" fill={armsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 300 149 C 304 159 308 171 312 183 C 310 185 307 185 305 183 C 300 172 296 161 293 150 Z" fill={armsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 221 129 C 217 136 214 144 212 152 C 215 154 219 153 223 150 C 225 143 227 136 228 130 Z" fill={armsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 309 129 C 313 136 316 144 318 152 C 315 154 311 153 307 150 C 305 143 303 136 302 130 Z" fill={armsColor} stroke={strokeColor} strokeWidth="1.2" />
+
+                  <path d="M 212 155 C 208 165 204 177 200 188 C 202 190 205 190 207 188 C 212 178 216 167 218 156 Z" fill={armsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 318 155 C 322 165 326 177 330 188 C 328 190 325 190 323 188 C 318 178 314 167 312 156 Z" fill={armsColor} stroke={strokeColor} strokeWidth="1.2" />
                 </g>
 
                 {/* Hands Back */}
-                <path d="M 187 186 L 181 194 L 184 197 L 189 189 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
-                <path d="M 190 187 L 184 199 L 186 201 L 191 188 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
-                <path d="M 313 186 L 319 194 L 316 197 L 311 189 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
-                <path d="M 310 187 L 316 199 L 314 201 L 309 188 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
+                <path d="M 199 191 L 193 199 L 196 202 L 201 194 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
+                <path d="M 202 192 L 196 204 L 198 206 L 203 193 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
+                <path d="M 331 191 L 337 199 L 334 202 L 329 194 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
+                <path d="M 328 192 L 334 204 L 332 206 L 327 193 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="0.8" />
 
-                {/* Glutes, Hamstrings & Calves -> PIERNAS */}
+                {/* Gluteus Maximus, Hamstrings & Calves -> PIERNAS */}
                 <g onClick={() => toggleMuscle('piernas')} style={{ cursor: 'pointer' }} filter={isSel('piernas') ? 'url(#glow)' : undefined}>
-                  {/* Gluteus Maximus */}
-                  <path d="M 248 169 C 240 169 227 172 222 180 C 218 188 218 199 222 208 C 228 216 240 217 248 217 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 252 169 C 260 169 273 172 278 180 C 282 188 282 199 278 208 C 272 216 260 217 252 217 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 263 174 C 255 174 241 177 236 186 C 231 194 231 205 235 214 C 242 222 254 223 263 223 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 267 174 C 275 174 289 177 294 186 C 299 194 299 205 295 214 C 288 222 276 223 267 223 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
 
-                  {/* Hamstrings */}
-                  <path d="M 224 220 C 222 229 224 238 229 246 L 234 244 C 231 237 230 228 231 220 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 233 220 C 233 229 235 238 239 246 L 243 244 C 241 236 240 227 240 220 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 276 220 C 278 229 276 238 271 246 L 266 244 C 269 237 270 228 269 220 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 267 220 C 267 229 265 238 261 246 L 257 244 C 259 236 260 227 260 220 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 237 226 C 235 235 237 244 242 252 L 247 250 C 244 243 243 234 244 226 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 246 226 C 246 235 248 244 252 252 L 256 250 C 254 242 253 233 253 226 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
 
-                  {/* Calves Back */}
-                  <path d="M 233 257 C 229 266 229 277 232 288 L 236 286 C 234 276 234 267 236 258 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 239 258 C 241 268 241 278 240 288 L 243 288 C 245 278 245 268 242 258 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 236 290 L 235 309 L 240 309 L 239 290 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 293 226 C 295 235 293 244 288 252 L 283 250 C 286 243 287 234 286 226 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 284 226 C 284 235 282 244 278 252 L 274 250 C 276 242 277 233 277 226 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
 
-                  <path d="M 267 257 C 271 266 271 277 268 288 L 264 286 C 266 276 266 267 264 258 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 261 258 C 259 268 259 278 260 288 L 257 288 C 255 278 255 268 258 258 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
-                  <path d="M 264 290 L 265 309 L 260 309 L 261 290 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 246 263 C 242 272 242 283 245 294 L 249 292 C 247 282 247 273 249 264 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 252 264 C 254 274 254 284 253 294 L 256 294 C 258 284 258 274 255 264 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 249 296 L 248 315 L 253 315 L 252 296 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
+
+                  <path d="M 284 263 C 288 272 288 283 285 294 L 281 292 C 283 282 283 273 281 264 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 278 264 C 276 274 276 284 277 294 L 274 294 C 272 284 272 274 275 264 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
+                  <path d="M 281 296 L 282 315 L 277 315 L 278 296 Z" fill={legsColor} stroke={strokeColor} strokeWidth="1.2" />
                 </g>
 
                 {/* Back of Knees */}
-                <path d="M 233 248 L 242 248 L 239 255 L 235 255 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
-                <path d="M 267 248 L 258 248 L 261 255 L 265 255 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
+                <path d="M 246 254 L 255 254 L 252 261 L 248 261 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
+                <path d="M 284 254 L 275 254 L 278 261 L 282 261 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
 
                 {/* Heels */}
-                <path d="M 235 311 L 232 325 L 239 325 L 240 311 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
-                <path d="M 265 311 L 268 325 L 261 325 L 260 311 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
+                <path d="M 248 317 L 245 329 L 252 329 L 253 317 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
+                <path d="M 282 317 L 285 329 L 278 329 L 277 317 Z" fill={neutralColor} stroke={strokeColor} strokeWidth="1" />
               </g>
             </g>
           )}
@@ -587,7 +577,7 @@ export const MuscleHeatmap: React.FC<MuscleHeatmapProps> = ({
             width: '100px',
             height: '9px',
             borderRadius: '4px',
-            background: 'linear-gradient(to right, #3b82f6 0%, #2563eb 45%, #1d4ed8 75%, #2a3444 100%)',
+            background: 'linear-gradient(to right, #3b82f6 0%, #2563eb 45%, #1d4ed8 75%, #2d3748 100%)',
             boxShadow: '0 0 10px rgba(59, 130, 246, 0.3)',
           }}
         />
