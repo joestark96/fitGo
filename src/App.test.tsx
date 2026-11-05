@@ -82,5 +82,47 @@ describe('App & Workout Lifecycle Tests', () => {
     expect(getByText('Active: no')).toBeDefined();
     expect(currentApp!.activeWorkout).toBeNull();
   });
+
+  it('updates weight and repetitions during an active workout session', () => {
+    let currentApp: ReturnType<typeof useApp> | null = null;
+
+    const TestComponent: React.FC = () => {
+      currentApp = useApp();
+      return <div>Active: {currentApp.activeWorkout ? 'yes' : 'no'}</div>;
+    };
+
+    render(
+      <AppProvider>
+        <TestComponent />
+      </AppProvider>
+    );
+
+    const routines = currentApp!.routines;
+    act(() => {
+      currentApp!.startWorkout(routines[0]);
+    });
+
+    expect(currentApp!.activeWorkout).not.toBeNull();
+
+    // Update set 0 with weight 45 and reps 12 with cascading
+    act(() => {
+      currentApp!.updateSetValues(0, 0, { actualWeightKg: 45, actualReps: 12 }, true);
+    });
+
+    const sets = currentApp!.activeWorkout!.exercises[0].sets;
+    expect(sets[0].actualWeightKg).toBe(45);
+    expect(sets[0].actualReps).toBe(12);
+
+    // Cascaded to set 1 as well
+    if (sets.length > 1) {
+      expect(sets[1].actualWeightKg).toBe(45);
+      expect(sets[1].actualReps).toBe(12);
+    }
+
+    // Clean up
+    act(() => {
+      currentApp!.cancelActiveWorkout();
+    });
+  });
 });
 

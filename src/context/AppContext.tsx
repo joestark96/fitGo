@@ -46,7 +46,8 @@ interface AppContextType {
   updateSetValues: (
     exerciseIndex: number,
     setIndex: number,
-    values: Partial<WorkoutSetResult>
+    values: Partial<WorkoutSetResult>,
+    cascadeToSubsequent?: boolean
   ) => void;
   addExerciseToActiveWorkout: (exercise: ExerciseDefinition) => void;
   removeExerciseFromActiveWorkout: (exerciseIndex: number) => void;
@@ -95,7 +96,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setDailyActivities(StorageService.getDailyActivities());
     setActivityLevelState(StorageService.getActivityLevel());
     const savedActive = StorageService.getActiveWorkout();
-    if (savedActive) {
+    if (savedActive && !activeWorkoutRef.current) {
       setActiveWorkout(savedActive);
       notificationService.scheduleWorkoutReminders(savedActive);
     }
@@ -246,47 +247,70 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const toggleSetCompleted = (exerciseIndex: number, setIndex: number) => {
-    if (!activeWorkout) return;
-    const updatedExercises = [...activeWorkout.exercises];
-    const targetExercise = { ...updatedExercises[exerciseIndex] };
-    const targetSets = [...targetExercise.sets];
-    const targetSet = { ...targetSets[setIndex] };
+    setActiveWorkout((prev) => {
+      if (!prev || !prev.exercises || !prev.exercises[exerciseIndex]) return prev;
+      const updatedExercises = [...prev.exercises];
+      const targetExercise = { ...updatedExercises[exerciseIndex] };
+      const targetSets = [...targetExercise.sets];
+      const targetSet = { ...targetSets[setIndex] };
 
-    targetSet.completed = !targetSet.completed;
-    targetSets[setIndex] = targetSet;
-    targetExercise.sets = targetSets;
-    updatedExercises[exerciseIndex] = targetExercise;
+      targetSet.completed = !targetSet.completed;
+      targetSets[setIndex] = targetSet;
+      targetExercise.sets = targetSets;
+      updatedExercises[exerciseIndex] = targetExercise;
 
-    const updated = {
-      ...activeWorkout,
-      exercises: updatedExercises,
-    };
-    setActiveWorkout(updated);
-    StorageService.saveActiveWorkout(updated);
+      const updated = {
+        ...prev,
+        exercises: updatedExercises,
+      };
+      StorageService.saveActiveWorkout(updated);
+      return updated;
+    });
   };
 
   const updateSetValues = (
     exerciseIndex: number,
     setIndex: number,
-    values: Partial<WorkoutSetResult>
+    values: Partial<WorkoutSetResult>,
+    cascadeToSubsequent: boolean = false
   ) => {
-    if (!activeWorkout) return;
-    const updatedExercises = [...activeWorkout.exercises];
-    const targetExercise = { ...updatedExercises[exerciseIndex] };
-    const targetSets = [...targetExercise.sets];
-    targetSets[setIndex] = {
-      ...targetSets[setIndex],
-      ...values,
-    };
-    targetExercise.sets = targetSets;
-    updatedExercises[exerciseIndex] = targetExercise;
+    setActiveWorkout((prev) => {
+      if (!prev || !prev.exercises || !prev.exercises[exerciseIndex]) return prev;
+      const updatedExercises = [...prev.exercises];
+      const targetExercise = { ...updatedExercises[exerciseIndex] };
+      const targetSets = [...(targetExercise.sets || [])];
 
-    const updated = {
-      ...activeWorkout,
-      exercises: updatedExercises,
-    };
-    setActiveWorkout(updated);
-    StorageService.saveActiveWorkout(updated);
+      // Update the target set
+      if (targetSets[setIndex]) {
+        targetSets[setIndex] = {
+          ...targetSets[setIndex],
+          ...values,
+        };
+      }
+
+      // If cascading, update all subsequent uncompleted sets in this exercise atomically
+      if (cascadeToSubsequent) {
+        for (let i = setIndex + 1; i < targetSets.length; i++) {
+          const nextSet = targetSets[i];
+          if (nextSet && !nextSet.completed) {
+            targetSets[i] = {
+              ...nextSet,
+              ...values,
+            };
+          }
+        }
+      }
+
+      targetExercise.sets = targetSets;
+      updatedExercises[exerciseIndex] = targetExercise;
+
+      const updated: WorkoutSession = {
+        ...prev,
+        exercises: updatedExercises,
+      };
+      StorageService.saveActiveWorkout(updated);
+      return updated;
+    });
   };
 
   const addExerciseToActiveWorkout = (exercise: ExerciseDefinition) => {

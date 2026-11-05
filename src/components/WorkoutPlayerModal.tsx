@@ -217,17 +217,7 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
     const isCompleted = !!currentSet?.completed;
     const isSingle = singleSetOnly || isCompleted || !!singleEditSets[`${exIdx}-${setIdx}`];
 
-    updateSetValues(exIdx, setIdx, values);
-
-    // If not single edit mode, cascade to all subsequent uncompleted sets in this exercise
-    if (!isSingle && ex.sets) {
-      for (let i = setIdx + 1; i < ex.sets.length; i++) {
-        const nextSet = ex.sets[i];
-        if (nextSet && !nextSet.completed) {
-          updateSetValues(exIdx, i, values);
-        }
-      }
-    }
+    updateSetValues(exIdx, setIdx, values, !isSingle);
   };
 
   // Expand all exercises when workout starts or opens
@@ -333,7 +323,7 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [isOpen, activeWorkout, isTimerRunning, showFinishAlert]);
+  }, [isOpen, Boolean(activeWorkout), isTimerRunning, showFinishAlert]);
 
   // Rest countdown timer loop
   useEffect(() => {
@@ -1255,13 +1245,19 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
                                     height: '38px',
                                   }}
                                   onIonInput={(e) => {
-                                    const val = parseFloat(e.detail.value || '0');
+                                    const raw = e.detail.value;
+                                    if (raw === '' || raw === null || raw === undefined) {
+                                      handleUpdateSetValue(exIdx, setIdx, { actualWeightKg: undefined });
+                                      return;
+                                    }
+                                    const val = parseFloat(raw);
+                                    if (isNaN(val)) return;
                                     const kg =
                                       getWeightUnit(exIdx) === 'lb'
                                         ? Number((val * 0.45359237).toFixed(1))
                                         : val;
                                     handleUpdateSetValue(exIdx, setIdx, {
-                                      actualWeightKg: isNaN(kg) ? 0 : kg,
+                                      actualWeightKg: kg,
                                     });
                                   }}
                                 />
@@ -1322,11 +1318,18 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
                                     color: s.completed ? '#10b981' : '#ffffff',
                                     height: '38px',
                                   }}
-                                  onIonInput={(e) =>
+                                  onIonInput={(e) => {
+                                    const raw = e.detail.value;
+                                    if (raw === '' || raw === null || raw === undefined) {
+                                      handleUpdateSetValue(exIdx, setIdx, { actualReps: undefined });
+                                      return;
+                                    }
+                                    const val = parseInt(raw, 10);
+                                    if (isNaN(val)) return;
                                     handleUpdateSetValue(exIdx, setIdx, {
-                                      actualReps: parseInt(e.detail.value || '0', 10),
-                                    })
-                                  }
+                                      actualReps: val,
+                                    });
+                                  }}
                                 />
 
                                 {/* History pill / Single edit indicator */}
@@ -1408,11 +1411,18 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
                                   color: s.completed ? '#10b981' : '#ffffff',
                                   height: '38px',
                                 }}
-                                onIonInput={(e) =>
+                                onIonInput={(e) => {
+                                  const raw = e.detail.value;
+                                  if (raw === '' || raw === null || raw === undefined) {
+                                    handleUpdateSetValue(exIdx, setIdx, { actualReps: undefined });
+                                    return;
+                                  }
+                                  const val = parseInt(raw, 10);
+                                  if (isNaN(val)) return;
                                   handleUpdateSetValue(exIdx, setIdx, {
-                                    actualReps: parseInt(e.detail.value || '0', 10),
-                                  })
-                                }
+                                    actualReps: val,
+                                  });
+                                }}
                               />
                             </div>
                           )}
@@ -1435,11 +1445,18 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
                                   color: s.completed ? '#10b981' : '#ffffff',
                                   height: '38px',
                                 }}
-                                onIonInput={(e) =>
+                                onIonInput={(e) => {
+                                  const raw = e.detail.value;
+                                  if (raw === '' || raw === null || raw === undefined) {
+                                    handleUpdateSetValue(exIdx, setIdx, { actualDurationSeconds: undefined });
+                                    return;
+                                  }
+                                  const val = parseInt(raw, 10);
+                                  if (isNaN(val)) return;
                                   handleUpdateSetValue(exIdx, setIdx, {
-                                    actualDurationSeconds: parseInt(e.detail.value || '0', 10),
-                                  })
-                                }
+                                    actualDurationSeconds: val,
+                                  });
+                                }}
                               />
                             </div>
                           )}
