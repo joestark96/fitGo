@@ -51,7 +51,6 @@ export const NutritionPage: React.FC = () => {
     calorieRecommendation,
     activityLevel,
     setActivityLevel,
-    workoutSessions,
     dailyActivities,
     saveDailyActivity,
     profile,
@@ -83,23 +82,10 @@ export const NutritionPage: React.FC = () => {
   // Filter entries for the selected day
   const dayEntries = foodEntries.filter((f) => f.date === selectedDate);
 
-  // Workouts and Activity on selected day
-  const dayWorkouts = workoutSessions.filter((s) => {
-    const sDate = getLocalDateString(s.completedAt || s.date);
-    return sDate === selectedDate;
-  });
-  const workoutCaloriesBurned = dayWorkouts.reduce(
-    (sum, s) => sum + (s.caloriesBurned || 0),
-    0
-  );
-  const workoutSteps = dayWorkouts.reduce((sum, s) => sum + (s.steps || 0), 0);
-
+  // Activity (calories burned & steps) on selected day
   const dayActivity = dailyActivities.find((a) => a.date === selectedDate);
-  const manualCaloriesBurned = dayActivity?.caloriesBurned || 0;
-  const manualSteps = dayActivity?.steps || 0;
-
-  const totalCaloriesBurned = workoutCaloriesBurned + manualCaloriesBurned;
-  const totalSteps = manualSteps > 0 ? manualSteps : workoutSteps;
+  const totalCaloriesBurned = dayActivity?.caloriesBurned || 0;
+  const totalSteps = dayActivity?.steps || 0;
 
   const totalCaloriesConsumed = dayEntries.reduce((sum, item) => sum + item.calories, 0);
   const netCalories = Math.max(0, totalCaloriesConsumed - totalCaloriesBurned);
@@ -266,14 +252,14 @@ export const NutritionPage: React.FC = () => {
               <div
                 onClick={() => setShowActivityAlert(true)}
                 style={{
-                  background: 'rgba(239, 68, 68, 0.08)',
-                  border: '1px solid rgba(239, 68, 68, 0.25)',
+                  background: 'rgba(239, 68, 68, 0.12)',
+                  border: '1.5px solid rgba(239, 68, 68, 0.35)',
                   borderRadius: '12px',
                   padding: '8px 6px',
                   textAlign: 'center',
                   cursor: 'pointer',
                 }}
-                title="Toca para ajustar calorías quemadas"
+                title="Toca para ingresar o ajustar calorías quemadas"
               >
                 <div style={{ fontSize: '0.68rem', color: '#f87171', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}>
                   <IonIcon icon={flameOutline} style={{ fontSize: '0.8rem' }} />
@@ -282,20 +268,20 @@ export const NutritionPage: React.FC = () => {
                 <div style={{ fontSize: '1.1rem', fontWeight: 900, color: '#f87171', marginTop: '2px' }}>
                   -{totalCaloriesBurned}
                 </div>
-                <div style={{ fontSize: '0.65rem', color: '#94a3b8' }}>kcal ✎</div>
+                <div style={{ fontSize: '0.65rem', color: '#fca5a5', fontWeight: 700 }}>kcal ✎</div>
               </div>
 
               <div
                 onClick={() => setShowActivityAlert(true)}
                 style={{
-                  background: 'rgba(56, 189, 248, 0.08)',
-                  border: '1px solid rgba(56, 189, 248, 0.25)',
+                  background: 'rgba(56, 189, 248, 0.12)',
+                  border: '1.5px solid rgba(56, 189, 248, 0.35)',
                   borderRadius: '12px',
                   padding: '8px 6px',
                   textAlign: 'center',
                   cursor: 'pointer',
                 }}
-                title="Toca para ajustar pasos"
+                title="Toca para ingresar o ajustar pasos"
               >
                 <div style={{ fontSize: '0.68rem', color: '#38bdf8', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}>
                   <IonIcon icon={footstepsOutline} style={{ fontSize: '0.8rem' }} />
@@ -304,8 +290,30 @@ export const NutritionPage: React.FC = () => {
                 <div style={{ fontSize: '1.1rem', fontWeight: 900, color: '#38bdf8', marginTop: '2px' }}>
                   {totalSteps.toLocaleString()}
                 </div>
-                <div style={{ fontSize: '0.65rem', color: '#94a3b8' }}>pasos ✎</div>
+                <div style={{ fontSize: '0.65rem', color: '#7dd3fc', fontWeight: 700 }}>pasos ✎</div>
               </div>
+            </div>
+
+            {/* Quick helper to log activity */}
+            <div
+              onClick={() => setShowActivityAlert(true)}
+              style={{
+                marginTop: '10px',
+                padding: '7px 10px',
+                background: 'rgba(239, 68, 68, 0.08)',
+                border: '1px dashed rgba(239, 68, 68, 0.35)',
+                borderRadius: '10px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+                cursor: 'pointer',
+                fontSize: '0.76rem',
+                color: '#fca5a5',
+                fontWeight: 600,
+              }}
+            >
+              <span>⌚ Toca aquí para registrar calorías quemadas y pasos (Smartwatch)</span>
             </div>
 
             {/* Visual Progress Bar */}
