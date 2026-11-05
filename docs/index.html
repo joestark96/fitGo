@@ -34,6 +34,13 @@
       box-sizing: border-box;
       margin: 0;
       padding: 0;
+      max-width: 100%;
+    }
+
+    html {
+      overflow-x: hidden;
+      width: 100%;
+      max-width: 100vw;
     }
 
     body {
@@ -42,10 +49,23 @@
       font-family: var(--font);
       line-height: 1.6;
       overflow-x: hidden;
+      width: 100%;
+      max-width: 100vw;
+      position: relative;
       -webkit-font-smoothing: antialiased;
     }
 
-    /* Ambient glow backgrounds */
+    /* Ambient glow backgrounds: contained in full-width overflow-hidden wrapper to prevent horizontal scroll */
+    .glow-wrapper {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      pointer-events: none;
+      z-index: 0;
+    }
     .glow-blob {
       position: absolute;
       width: 500px;
@@ -53,7 +73,6 @@
       border-radius: 50%;
       filter: blur(120px);
       pointer-events: none;
-      z-index: 0;
       opacity: 0.18;
     }
     .glow-1 {
@@ -667,52 +686,35 @@
     @media (max-width: 640px) {
       .container {
         padding: 0 16px;
+        width: 100%;
+        max-width: 100%;
       }
       .nav-wrapper {
         height: 62px;
-        gap: 8px;
+        gap: 6px;
+        width: 100%;
       }
       .logo {
-        gap: 8px;
+        gap: 6px;
+        min-width: 0;
+        flex-shrink: 1;
       }
       .logo-img {
-        width: 34px;
-        height: 34px;
-        border-radius: 10px;
+        width: 32px;
+        height: 32px;
+        border-radius: 9px;
+        flex-shrink: 0;
       }
       .logo-text {
-        font-size: 1.15rem;
+        font-size: 1.05rem;
+        white-space: nowrap;
       }
-      .header-actions {
-        gap: 6px;
-      }
-      .nav-btn {
-        padding: 7px 11px;
-        font-size: 0.78rem;
-        border-radius: 10px;
-        gap: 5px;
-      }
-      .features-grid {
-        grid-template-columns: 1fr;
-      }
-      .steps-grid {
-        grid-template-columns: 1fr;
-      }
-      .stats-grid {
-        grid-template-columns: 1fr;
-      }
-      .hero-actions {
-        flex-direction: column;
-        width: 100%;
-      }
-      .btn-download-primary, .btn-github-secondary {
-        width: 100%;
-        justify-content: center;
-      }
-    }
-    @media (max-width: 440px) {
       .logo-badge {
         display: none;
+      }
+      .header-actions {
+        gap: 5px;
+        flex-shrink: 0;
       }
       .btn-text-full {
         display: none;
@@ -723,16 +725,100 @@
       .nav-btn {
         padding: 6px 9px;
         font-size: 0.76rem;
+        border-radius: 9px;
+        gap: 4px;
+      }
+      .hero {
+        padding: 50px 0 40px;
+      }
+      .hero-actions {
+        flex-direction: column;
+        width: 100%;
+        gap: 12px;
+      }
+      .btn-download-primary,
+      .btn-webapp-secondary,
+      .btn-github-secondary {
+        width: 100% !important;
+        justify-content: center !important;
+        text-align: center;
+        padding: 13px 18px !important;
+        font-size: 0.95rem !important;
+        box-sizing: border-box;
+      }
+      .hero-preview {
+        padding: 14px 10px;
+        border-radius: 20px;
+      }
+      .phone-center {
+        padding: 10px;
+        border-radius: 22px;
+      }
+      .phone-screen {
+        padding: 14px 10px;
+        border-radius: 16px;
+      }
+      .mock-row {
+        padding: 8px 10px;
+        font-size: 0.8rem;
+      }
+      .features-grid {
+        grid-template-columns: 1fr;
+      }
+      .feature-card {
+        padding: 24px 18px;
+        border-radius: 18px;
+      }
+      .steps-grid {
+        grid-template-columns: 1fr;
+      }
+      .step-card {
+        padding: 22px 18px;
+        border-radius: 18px;
+      }
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+      .stat-item {
+        padding: 20px 16px;
+        border-radius: 18px;
+      }
+      .changelog-card {
+        padding: 20px 16px;
+        border-radius: 18px;
+      }
+      .changelog-header h3 {
+        font-size: 1.15rem !important;
+      }
+      .cta-banner {
+        padding: 36px 16px;
+        border-radius: 20px;
+        margin: 30px auto 60px;
+      }
+      .cta-banner h2 {
+        font-size: 1.7rem;
+      }
+      .cta-banner p {
+        font-size: 0.92rem;
+        margin-bottom: 20px;
+      }
+      .cta-banner .btn-download-primary {
+        width: 100%;
+        padding: 14px 16px;
+        font-size: 0.92rem;
+        white-space: normal;
       }
     }
   </style>
 </head>
 <body>
 
-  <!-- Ambient Glow Effects -->
-  <div class="glow-blob glow-1"></div>
-  <div class="glow-blob glow-2"></div>
-  <div class="glow-blob glow-3"></div>
+  <!-- Ambient Glow Effects (confined in overflow-hidden wrapper) -->
+  <div class="glow-wrapper">
+    <div class="glow-blob glow-1"></div>
+    <div class="glow-blob glow-2"></div>
+    <div class="glow-blob glow-3"></div>
+  </div>
 
   <!-- Header / Navigation -->
   <header>
