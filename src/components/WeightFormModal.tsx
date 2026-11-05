@@ -29,7 +29,7 @@ import {
 } from 'ionicons/icons';
 import { useApp } from '../context/AppContext';
 import { WeightRecord } from '../types';
-import { calculateBmi, getBmiCategory, formatDateDDMMYYYY } from '../services/storage';
+import { calculateBmi, getBmiCategory, formatDateDDMMYYYY, getLocalDateString } from '../services/storage';
 import { DateInput } from './DateInput';
 import { WeightConverterModal } from './WeightConverterModal';
 
@@ -48,7 +48,7 @@ export const WeightFormModal: React.FC<WeightFormModalProps> = ({
 }) => {
   const { profile, saveWeightRecord, saveProfile } = useApp();
 
-  const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState<string>(() => getLocalDateString());
   const [weightKg, setWeightKg] = useState<string>('');
   const [weightLbs, setWeightLbs] = useState<string>('');
   const [weightUnit, setWeightUnit] = useState<'kg' | 'lb'>('kg');
@@ -80,7 +80,7 @@ export const WeightFormModal: React.FC<WeightFormModalProps> = ({
       setBodyFat(recordToEdit.bodyFatPercentage ? recordToEdit.bodyFatPercentage.toString() : '');
       setNotes(recordToEdit.notes || '');
     } else {
-      setDate(new Date().toISOString().split('T')[0]);
+      setDate(getLocalDateString());
       setHeightCm(profile?.height ? profile.height.toString() : '170');
       const defaultKg = profile?.targetWeight ? profile.targetWeight.toString() : '70';
       setWeightKg(defaultKg);

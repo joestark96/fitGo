@@ -36,6 +36,7 @@ import {
 } from 'ionicons/icons';
 import { useApp } from '../context/AppContext';
 import { FoodEntry, MealType } from '../types';
+import { getLocalDateString } from '../services/storage';
 import { DateInput } from './DateInput';
 
 interface FoodEntryModalProps {
@@ -176,7 +177,7 @@ export const FoodEntryModal: React.FC<FoodEntryModalProps> = ({
       setNotes(entryToEdit.notes || '');
       setLoadedFrom(null);
     } else {
-      setDate(selectedDate || new Date().toISOString().split('T')[0]);
+      setDate(selectedDate || getLocalDateString());
       setMealType(defaultMealType);
       setName('');
       setCalories('');

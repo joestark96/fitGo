@@ -593,8 +593,22 @@ export const StorageService = {
       const data = localStorage.getItem(STORAGE_KEYS.WEIGHT_RECORDS);
       if (!data) return [];
       const records: WeightRecord[] = JSON.parse(data);
+      let hasChanges = false;
+      const healed = records.map((r) => {
+        if (r.createdAt && r.date) {
+          const localCreated = getLocalDateString(new Date(r.createdAt));
+          if (localCreated && r.date === addDaysToDateString(localCreated, 1)) {
+            hasChanges = true;
+            return { ...r, date: localCreated };
+          }
+        }
+        return r;
+      });
+      if (hasChanges) {
+        localStorage.setItem(STORAGE_KEYS.WEIGHT_RECORDS, JSON.stringify(healed));
+      }
       // sort by date descending
-      return records.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      return healed.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     } catch (e) {
       console.error('Error getting weight records:', e);
       return [];
@@ -632,7 +646,23 @@ export const StorageService = {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.WORKOUT_SESSIONS);
       if (!data) return [];
-      return JSON.parse(data);
+      const list = JSON.parse(data) as WorkoutSession[];
+      let hasChanges = false;
+      const healed = list.map((s) => {
+        const refDate = s.completedAt || s.startedAt;
+        if (refDate && s.date) {
+          const localCreated = getLocalDateString(new Date(refDate));
+          if (localCreated && s.date === addDaysToDateString(localCreated, 1)) {
+            hasChanges = true;
+            return { ...s, date: localCreated };
+          }
+        }
+        return s;
+      });
+      if (hasChanges) {
+        localStorage.setItem(STORAGE_KEYS.WORKOUT_SESSIONS, JSON.stringify(healed));
+      }
+      return healed;
     } catch (e) {
       console.error('Error getting workout sessions:', e);
       return [];
@@ -695,7 +725,22 @@ export const StorageService = {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.FOOD_ENTRIES);
       if (!data) return [];
-      return JSON.parse(data) as FoodEntry[];
+      const entries = JSON.parse(data) as FoodEntry[];
+      let hasChanges = false;
+      const healed = entries.map((e) => {
+        if (e.createdAt && e.date) {
+          const localCreated = getLocalDateString(new Date(e.createdAt));
+          if (localCreated && e.date === addDaysToDateString(localCreated, 1)) {
+            hasChanges = true;
+            return { ...e, date: localCreated };
+          }
+        }
+        return e;
+      });
+      if (hasChanges) {
+        localStorage.setItem(STORAGE_KEYS.FOOD_ENTRIES, JSON.stringify(healed));
+      }
+      return healed;
     } catch (e) {
       console.error('Error reading food entries:', e);
       return [];
@@ -952,6 +997,38 @@ export function calculateAge(birthDateString: string): number {
     age--;
   }
   return age >= 0 ? age : 0;
+}
+
+/**
+ * Returns a date string in YYYY-MM-DD format based on local device time,
+ * completely avoiding UTC offset shifts where toISOString() yields tomorrow's date after 18:00 (6:00 PM).
+ */
+export function getLocalDateString(dateInput: Date | string = new Date()): string {
+  if (typeof dateInput === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
+    return dateInput;
+  }
+  const d = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
+  if (isNaN(d.getTime())) return '';
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/**
+ * Safely adds or subtracts days to a YYYY-MM-DD string using local date calendar calculations.
+ */
+export function addDaysToDateString(dateStr: string, daysToAdd: number): string {
+  if (!dateStr || !dateStr.includes('-')) {
+    dateStr = getLocalDateString();
+  }
+  const parts = dateStr.split('-').map(Number);
+  const y = parts[0];
+  const m = parts[1];
+  const d = parts[2];
+  const dateObj = new Date(y, m - 1, d);
+  dateObj.setDate(dateObj.getDate() + daysToAdd);
+  return getLocalDateString(dateObj);
 }
 
 /**

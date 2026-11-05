@@ -10,6 +10,8 @@ import {
   getStartOfWeek,
   getOrderedWeekDayNames,
   calculateEstimatedCaloriesBurned,
+  getLocalDateString,
+  addDaysToDateString,
   StorageService,
   DEFAULT_EXERCISES,
 } from './storage';
@@ -326,6 +328,44 @@ describe('Storage and Fitness Calculations', () => {
       expect(act).not.toBeNull();
       expect(act?.steps).toBe(8250);
       expect(act?.caloriesBurned).toBe(480);
+    });
+  });
+
+  describe('Local Date and Timezone Handling', () => {
+    it('formats local date without UTC offset shift', () => {
+      // 2026-11-04 at 18:31 local time
+      const eveningDate = new Date(2026, 10, 4, 18, 31, 0);
+      const localKey = getLocalDateString(eveningDate);
+      expect(localKey).toBe('2026-11-04');
+    });
+
+    it('correctly navigates days using addDaysToDateString', () => {
+      expect(addDaysToDateString('2026-11-04', 1)).toBe('2026-11-05');
+      expect(addDaysToDateString('2026-11-04', -1)).toBe('2026-11-03');
+    });
+
+    it('auto-heals food entry mistakenly tagged with tomorrow due to UTC shift', () => {
+      // Suppose entry was created at 18:35 local (which is 00:35 UTC next day)
+      // but saved with date '2026-11-05'
+      const eveningLocal = new Date(2026, 10, 4, 18, 35, 0);
+      const createdAtIso = eveningLocal.toISOString();
+
+      localStorage.setItem(
+        'fittrack_food_entries',
+        JSON.stringify([
+          {
+            id: 'food-utc-bug',
+            date: '2026-11-05',
+            mealType: 'cena',
+            name: 'Pechuga de Pollo',
+            calories: 350,
+            createdAt: createdAtIso,
+          },
+        ])
+      );
+
+      const entries = StorageService.getFoodEntries();
+      expect(entries[0].date).toBe('2026-11-04');
     });
   });
 });

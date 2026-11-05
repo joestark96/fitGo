@@ -14,7 +14,7 @@ import {
   IonDatetime,
 } from '@ionic/react';
 import { calendarOutline, checkmarkOutline, closeOutline } from 'ionicons/icons';
-import { formatDateDDMMYYYY } from '../services/storage';
+import { formatDateDDMMYYYY, getLocalDateString } from '../services/storage';
 
 interface DateInputProps {
   label: string;
@@ -32,7 +32,7 @@ export const DateInput: React.FC<DateInputProps> = ({
   const [displayValue, setDisplayValue] = useState('');
   const [showPickerModal, setShowPickerModal] = useState(false);
   const [pickerValue, setPickerValue] = useState(
-    value && value.includes('-') ? value : new Date().toISOString().split('T')[0]
+    value && value.includes('-') ? value : getLocalDateString()
   );
 
   // Sync internal display when value changes externally

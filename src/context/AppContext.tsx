@@ -14,7 +14,7 @@ import {
   RoutineExerciseConfig,
   DailyActivity,
 } from '../types';
-import { StorageService, calculateBmi, calculateCalorieRecommendation } from '../services/storage';
+import { StorageService, calculateBmi, calculateCalorieRecommendation, getLocalDateString } from '../services/storage';
 import { notificationService } from '../services/notificationService';
 
 interface AppContextType {
@@ -156,7 +156,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (records.length === 0 && newProfile.targetWeight) {
       const initialRecord: WeightRecord = {
         id: 'weight-init-' + Date.now(),
-        date: new Date().toISOString().split('T')[0],
+        date: getLocalDateString(),
         weightKg: newProfile.targetWeight,
         heightCm: newProfile.height,
         bmi: calculateBmi(newProfile.targetWeight, newProfile.height),
@@ -227,7 +227,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       id: 'session-' + Date.now(),
       routineId: routine?.id,
       routineName: routine?.name || 'Entrenamiento',
-      date: new Date().toISOString().split('T')[0],
+      date: getLocalDateString(),
       startedAt: new Date().toISOString(),
       exercises: workoutExercises,
       isCompleted: false,

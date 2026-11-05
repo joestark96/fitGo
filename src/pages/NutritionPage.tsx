@@ -40,7 +40,7 @@ import {
 } from 'ionicons/icons';
 import { useApp } from '../context/AppContext';
 import { FoodEntry, MealType, ActivityLevel, DailyActivity } from '../types';
-import { formatDateDDMMYYYY } from '../services/storage';
+import { formatDateDDMMYYYY, getLocalDateString, addDaysToDateString } from '../services/storage';
 import { FoodEntryModal } from '../components/FoodEntryModal';
 import { AppHeader } from '../components/AppHeader';
 
@@ -57,10 +57,8 @@ export const NutritionPage: React.FC = () => {
     profile,
   } = useApp();
 
-  // Current selected date in YYYY-MM-DD
-  const [selectedDate, setSelectedDate] = useState<string>(
-    new Date().toISOString().split('T')[0]
-  );
+  // Current selected date in YYYY-MM-DD (device local date, avoiding UTC shift)
+  const [selectedDate, setSelectedDate] = useState<string>(() => getLocalDateString());
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showActivityAlert, setShowActivityAlert] = useState(false);
   const [entryToEdit, setEntryToEdit] = useState<FoodEntry | null>(null);
@@ -71,19 +69,15 @@ export const NutritionPage: React.FC = () => {
 
   // Navigate dates
   const handlePrevDay = () => {
-    const d = new Date(selectedDate);
-    d.setDate(d.getDate() - 1);
-    setSelectedDate(d.toISOString().split('T')[0]);
+    setSelectedDate((prev) => addDaysToDateString(prev, -1));
   };
 
   const handleNextDay = () => {
-    const d = new Date(selectedDate);
-    d.setDate(d.getDate() + 1);
-    setSelectedDate(d.toISOString().split('T')[0]);
+    setSelectedDate((prev) => addDaysToDateString(prev, 1));
   };
 
   const handleToday = () => {
-    setSelectedDate(new Date().toISOString().split('T')[0]);
+    setSelectedDate(getLocalDateString());
   };
 
   // Filter entries for the selected day
@@ -91,7 +85,7 @@ export const NutritionPage: React.FC = () => {
 
   // Workouts and Activity on selected day
   const dayWorkouts = workoutSessions.filter((s) => {
-    const sDate = (s.completedAt || s.date || '').split('T')[0];
+    const sDate = getLocalDateString(s.completedAt || s.date);
     return sDate === selectedDate;
   });
   const workoutCaloriesBurned = dayWorkouts.reduce(
@@ -130,7 +124,7 @@ export const NutritionPage: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const isToday = selectedDate === new Date().toISOString().split('T')[0];
+  const isToday = selectedDate === getLocalDateString();
 
   const mealConfig: { type: MealType; title: string; icon: string; emoji: string }[] = [
     { type: 'desayuno', title: 'Desayuno', icon: cafeOutline, emoji: '🌅' },
