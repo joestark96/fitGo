@@ -23,6 +23,7 @@ import {
   copyOutline,
   barbellOutline,
   scaleOutline,
+  layersOutline,
 } from 'ionicons/icons';
 
 interface WeightConverterModalProps {
@@ -35,6 +36,12 @@ interface WeightConverterModalProps {
 }
 
 const COMMON_DUMBBELLS = [10, 15, 20, 25, 30, 35, 40, 45, 50, 60, 70, 80];
+
+// Pulley machine stack configurations
+const PULLEY_STANDARD_LBS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 180, 200];
+const PULLEY_CROSSOVER_LBS = [5, 7.5, 10, 12.5, 15, 17.5, 20, 22.5, 25, 30, 35, 40, 45, 50, 60, 70];
+const PULLEY_HEAVY_LBS = [15, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165, 180, 195, 210];
+
 const COMMON_PLATES = [10, 25, 35, 45];
 const COMMON_BODY_WEIGHTS = [120, 140, 150, 160, 170, 180, 200, 220];
 
@@ -49,6 +56,7 @@ export const WeightConverterModal: React.FC<WeightConverterModalProps> = ({
   const [lbsValue, setLbsValue] = useState<string>('50');
   const [kgValue, setKgValue] = useState<string>('22.7');
   const [copied, setCopied] = useState(false);
+  const [pulleyType, setPulleyType] = useState<'standard' | 'crossover' | 'heavy'>('standard');
 
   useEffect(() => {
     if (isOpen) {
@@ -92,6 +100,12 @@ export const WeightConverterModal: React.FC<WeightConverterModalProps> = ({
     setLbsValue(lbs.toString());
     const converted = lbs * 0.45359237;
     setKgValue(converted >= 10 ? converted.toFixed(1) : converted.toFixed(2));
+  };
+
+  const handleAddLbs = (addLbs: number) => {
+    const current = parseFloat(lbsValue) || 0;
+    const newVal = Math.round((current + addLbs) * 10) / 10;
+    handleLbsChange(newVal.toString());
   };
 
   const handleCopy = () => {
@@ -339,6 +353,184 @@ export const WeightConverterModal: React.FC<WeightConverterModalProps> = ({
                 </button>
               );
             })}
+          </div>
+        </div>
+
+        {/* Máquinas de Polea y Cables (Torre de Placas) */}
+        <div style={{ marginBottom: '22px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <IonIcon icon={layersOutline} style={{ color: '#38bdf8' }} />
+              <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--ion-text-color)' }}>
+                Máquinas de Polea y Cables (Torre)
+              </span>
+            </div>
+            <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Elige tipo de torre</span>
+          </div>
+
+          {/* Selector de tipo de torre */}
+          <div
+            style={{
+              display: 'flex',
+              gap: '6px',
+              marginBottom: '10px',
+              overflowX: 'auto',
+              paddingBottom: '2px',
+              scrollbarWidth: 'none',
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => setPulleyType('standard')}
+              style={{
+                flex: 1,
+                minWidth: '105px',
+                padding: '6px 8px',
+                borderRadius: '8px',
+                border: pulleyType === 'standard' ? '1.5px solid #38bdf8' : '1px solid #334155',
+                background: pulleyType === 'standard' ? 'rgba(56, 189, 248, 0.2)' : '#181e29',
+                color: pulleyType === 'standard' ? '#38bdf8' : '#94a3b8',
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              Torre 10 lb (Estándar)
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setPulleyType('crossover')}
+              style={{
+                flex: 1,
+                minWidth: '115px',
+                padding: '6px 8px',
+                borderRadius: '8px',
+                border: pulleyType === 'crossover' ? '1.5px solid #38bdf8' : '1px solid #334155',
+                background: pulleyType === 'crossover' ? 'rgba(56, 189, 248, 0.2)' : '#181e29',
+                color: pulleyType === 'crossover' ? '#38bdf8' : '#94a3b8',
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              Cruce / Doble (5-7.5 lb)
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setPulleyType('heavy')}
+              style={{
+                flex: 1,
+                minWidth: '105px',
+                padding: '6px 8px',
+                borderRadius: '8px',
+                border: pulleyType === 'heavy' ? '1.5px solid #38bdf8' : '1px solid #334155',
+                background: pulleyType === 'heavy' ? 'rgba(56, 189, 248, 0.2)' : '#181e29',
+                color: pulleyType === 'heavy' ? '#38bdf8' : '#94a3b8',
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              Torre 15 lb (Pesada)
+            </button>
+          </div>
+
+          {/* Placas de la torre seleccionada */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+            {(pulleyType === 'standard'
+              ? PULLEY_STANDARD_LBS
+              : pulleyType === 'crossover'
+              ? PULLEY_CROSSOVER_LBS
+              : PULLEY_HEAVY_LBS
+            ).map((lbs) => {
+              const eqKg = (lbs * 0.45359237).toFixed(1);
+              const isSelected = parseFloat(lbsValue) === lbs;
+              return (
+                <button
+                  key={lbs}
+                  type="button"
+                  onClick={() => handleSelectPreset(lbs)}
+                  style={{
+                    background: isSelected ? '#0284c7' : 'var(--ion-color-step-100, #27272a)',
+                    color: isSelected ? '#ffffff' : 'var(--ion-text-color)',
+                    border: isSelected ? '1px solid #38bdf8' : '1px solid var(--ion-color-step-150, #3f3f46)',
+                    borderRadius: '8px',
+                    padding: '6px 10px',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    lineHeight: 1.2,
+                    minWidth: '46px',
+                  }}
+                >
+                  <span>{lbs} lb</span>
+                  <span style={{ fontSize: '0.68rem', opacity: 0.85, fontWeight: 500 }}>{eqKg} kg</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Microcarga selector */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              marginTop: '8px',
+              padding: '6px 10px',
+              background: 'rgba(255, 255, 255, 0.03)',
+              borderRadius: '10px',
+              border: '1px solid rgba(255, 255, 255, 0.06)',
+            }}
+          >
+            <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 600 }}>
+              Pin de microcarga:
+            </span>
+            <button
+              type="button"
+              onClick={() => handleAddLbs(2.5)}
+              style={{
+                padding: '4px 10px',
+                borderRadius: '6px',
+                background: 'rgba(56, 189, 248, 0.15)',
+                border: '1px solid rgba(56, 189, 248, 0.3)',
+                color: '#38bdf8',
+                fontSize: '0.74rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+              title="Suma 2.5 lb (1.1 kg) al peso actual"
+            >
+              +2.5 lb (+1.1 kg)
+            </button>
+            <button
+              type="button"
+              onClick={() => handleAddLbs(5)}
+              style={{
+                padding: '4px 10px',
+                borderRadius: '6px',
+                background: 'rgba(56, 189, 248, 0.15)',
+                border: '1px solid rgba(56, 189, 248, 0.3)',
+                color: '#38bdf8',
+                fontSize: '0.74rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+              title="Suma 5.0 lb (2.3 kg) al peso actual"
+            >
+              +5.0 lb (+2.3 kg)
+            </button>
           </div>
         </div>
 
