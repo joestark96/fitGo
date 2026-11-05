@@ -30,10 +30,11 @@ import {
   timeOutline,
   checkmarkDoneOutline,
   flameOutline,
+  footstepsOutline,
   searchOutline,
 } from 'ionicons/icons';
 import { useApp } from '../context/AppContext';
-import { Routine } from '../types';
+import { Routine, WorkoutSession } from '../types';
 import { formatDateDDMMYYYY } from '../services/storage';
 import { RoutineFormModal } from '../components/RoutineFormModal';
 import { WorkoutPlayerModal } from '../components/WorkoutPlayerModal';
@@ -41,13 +42,21 @@ import { ExerciseCatalogModal } from '../components/ExerciseCatalogModal';
 import { AppHeader } from '../components/AppHeader';
 
 export const WorkoutsPage: React.FC = () => {
-  const { routines, deleteRoutine, startWorkout, activeWorkout, workoutSessions, profile } =
-    useApp();
+  const {
+    routines,
+    deleteRoutine,
+    startWorkout,
+    activeWorkout,
+    workoutSessions,
+    updateWorkoutSession,
+    profile,
+  } = useApp();
 
   const [isRoutineModalOpen, setIsRoutineModalOpen] = useState(false);
   const [routineToEdit, setRoutineToEdit] = useState<Routine | null>(null);
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
   const [routineToDelete, setRoutineToDelete] = useState<string | null>(null);
+  const [sessionToEditMetrics, setSessionToEditMetrics] = useState<WorkoutSession | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isCatalogOpen, setIsCatalogOpen] = useState(false);
 
@@ -280,11 +289,21 @@ export const WorkoutsPage: React.FC = () => {
               );
 
               return (
-                <IonCard key={session.id} style={{ margin: '0 0 10px', borderRadius: '12px' }}>
+                <IonCard
+                  key={session.id}
+                  style={{ margin: '0 0 10px', borderRadius: '12px' }}
+                  onClick={() => setSessionToEditMetrics(session)}
+                >
                   <IonCardContent style={{ padding: '12px 14px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div>
-                        <strong style={{ fontSize: '1rem' }}>{session.routineName}</strong>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginRight: '8px' }}>
+                          <strong style={{ fontSize: '1rem' }}>{session.routineName}</strong>
+                          <IonBadge color={doneSets === totalSets ? 'success' : 'primary'}>
+                            <IonIcon icon={checkmarkDoneOutline} style={{ verticalAlign: 'middle', marginRight: '4px' }} />
+                            {doneSets}/{totalSets} sets
+                          </IonBadge>
+                        </div>
                         <div
                           style={{
                             fontSize: '0.8rem',
@@ -292,6 +311,7 @@ export const WorkoutsPage: React.FC = () => {
                             marginTop: '2px',
                             display: 'flex',
                             gap: '12px',
+                            flexWrap: 'wrap',
                           }}
                         >
                           <span>
@@ -305,12 +325,46 @@ export const WorkoutsPage: React.FC = () => {
                             </span>
                           )}
                         </div>
-                      </div>
 
-                      <IonBadge color={doneSets === totalSets ? 'success' : 'primary'}>
-                        <IonIcon icon={checkmarkDoneOutline} style={{ verticalAlign: 'middle', marginRight: '4px' }} />
-                        {doneSets}/{totalSets} sets
-                      </IonBadge>
+                        {/* Activity metrics badges (Calories & Steps) */}
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '8px' }}>
+                          <span
+                            style={{
+                              background: session.caloriesBurned ? 'rgba(239, 68, 68, 0.14)' : 'rgba(255, 255, 255, 0.05)',
+                              border: session.caloriesBurned ? '1px solid rgba(239, 68, 68, 0.35)' : '1px solid rgba(255, 255, 255, 0.1)',
+                              color: session.caloriesBurned ? '#f87171' : 'var(--ion-color-medium)',
+                              padding: '2px 8px',
+                              borderRadius: '8px',
+                              fontSize: '0.74rem',
+                              fontWeight: 700,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                            }}
+                          >
+                            <IonIcon icon={flameOutline} />
+                            {session.caloriesBurned !== undefined ? `${session.caloriesBurned} kcal` : '+ kcal'}
+                          </span>
+
+                          <span
+                            style={{
+                              background: session.steps ? 'rgba(56, 189, 248, 0.14)' : 'rgba(255, 255, 255, 0.05)',
+                              border: session.steps ? '1px solid rgba(56, 189, 248, 0.35)' : '1px solid rgba(255, 255, 255, 0.1)',
+                              color: session.steps ? '#38bdf8' : 'var(--ion-color-medium)',
+                              padding: '2px 8px',
+                              borderRadius: '8px',
+                              fontSize: '0.74rem',
+                              fontWeight: 700,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                            }}
+                          >
+                            <IonIcon icon={footstepsOutline} />
+                            {session.steps !== undefined ? `${session.steps.toLocaleString()} pasos` : '+ pasos'}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   </IonCardContent>
                 </IonCard>
@@ -318,6 +372,52 @@ export const WorkoutsPage: React.FC = () => {
             })}
           </div>
         )}
+
+        {/* Modal/Alert to Edit Session Metrics (Calories & Steps) */}
+        <IonAlert
+          isOpen={Boolean(sessionToEditMetrics)}
+          onDidDismiss={() => setSessionToEditMetrics(null)}
+          header="Métricas del Entrenamiento"
+          subHeader={sessionToEditMetrics?.routineName || 'Sesión'}
+          message="Ingresa o ajusta las calorías quemadas y los pasos marcados por tu smartwatch o pulsera."
+          inputs={[
+            {
+              name: 'calories',
+              type: 'number',
+              placeholder: 'Calorías quemadas (kcal)',
+              value: sessionToEditMetrics?.caloriesBurned !== undefined ? String(sessionToEditMetrics.caloriesBurned) : '',
+              min: 0,
+            },
+            {
+              name: 'steps',
+              type: 'number',
+              placeholder: 'Pasos alcanzados',
+              value: sessionToEditMetrics?.steps !== undefined ? String(sessionToEditMetrics.steps) : '',
+              min: 0,
+            },
+          ]}
+          buttons={[
+            {
+              text: 'Cancelar',
+              role: 'cancel',
+            },
+            {
+              text: 'Guardar',
+              handler: (data) => {
+                if (!sessionToEditMetrics) return;
+                const calNum = parseInt(data.calories, 10);
+                const stepNum = parseInt(data.steps, 10);
+                const updated: WorkoutSession = {
+                  ...sessionToEditMetrics,
+                  caloriesBurned: !isNaN(calNum) && calNum >= 0 ? calNum : undefined,
+                  steps: !isNaN(stepNum) && stepNum >= 0 ? stepNum : undefined,
+                };
+                updateWorkoutSession(updated);
+                setToastMessage('Métricas del entrenamiento actualizadas');
+              },
+            },
+          ]}
+        />
 
         {/* Routine Form Modal */}
         <RoutineFormModal

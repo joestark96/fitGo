@@ -39,6 +39,8 @@ import {
   checkmarkOutline,
   swapHorizontalOutline,
   homeOutline,
+  flameOutline,
+  footstepsOutline,
 } from 'ionicons/icons';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
@@ -46,6 +48,7 @@ import { ExerciseGif } from './ExerciseGif';
 import { ExerciseCatalogModal } from './ExerciseCatalogModal';
 import { WeightConverterModal } from './WeightConverterModal';
 import { ExerciseDefinition } from '../types';
+import { StorageService, calculateEstimatedCaloriesBurned } from '../services/storage';
 
 interface WorkoutPlayerModalProps {
   isOpen: boolean;
@@ -53,11 +56,14 @@ interface WorkoutPlayerModalProps {
 }
 
 interface SessionSummary {
+  sessionId?: string;
   routineName: string;
   durationFormatted: string;
   totalSets: number;
   completedSets: number;
   totalVolumeKg: number;
+  caloriesBurned?: number;
+  steps?: number;
   exercises: {
     name: string;
     completedSetsCount: number;
@@ -69,6 +75,7 @@ interface SessionSummary {
 export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
   const {
+    profile,
     activeWorkout,
     toggleSetCompleted,
     updateSetValues,
@@ -78,12 +85,17 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
     addSetToActiveWorkout,
     removeSetFromActiveWorkout,
     finishActiveWorkout,
+    updateWorkoutSession,
     cancelActiveWorkout,
   } = useApp();
 
   // Session summary & auto-redirect timer
   const [sessionSummary, setSessionSummary] = useState<SessionSummary | null>(null);
   const [redirectSeconds, setRedirectSeconds] = useState<number>(15);
+  const [summaryCalories, setSummaryCalories] = useState<string>('');
+  const [summarySteps, setSummarySteps] = useState<string>('');
+  const [savedSessionId, setSavedSessionId] = useState<string | null>(null);
+  const [hasEditedMetrics, setHasEditedMetrics] = useState<boolean>(false);
 
   // Workout duration timer
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -354,6 +366,28 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
     onClose();
   };
 
+  const handleUpdateMetrics = (newCalStr: string, newStepStr: string) => {
+    setSummaryCalories(newCalStr);
+    setSummarySteps(newStepStr);
+    setHasEditedMetrics(true);
+
+    const targetId = savedSessionId;
+    if (targetId) {
+      const list = StorageService.getWorkoutSessions();
+      const session = list.find((s) => s.id === targetId);
+      if (session) {
+        const calNum = parseInt(newCalStr, 10);
+        const stepNum = parseInt(newStepStr, 10);
+        const updatedSession = {
+          ...session,
+          caloriesBurned: !isNaN(calNum) && calNum >= 0 ? calNum : undefined,
+          steps: !isNaN(stepNum) && stepNum >= 0 ? stepNum : undefined,
+        };
+        updateWorkoutSession(updatedSession);
+      }
+    }
+  };
+
   const handleSelectExerciseFromCatalog = (exercise: ExerciseDefinition) => {
     addExerciseToActiveWorkout(exercise);
     setIsCatalogOpen(false);
@@ -519,6 +553,174 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
                 >
                   {sessionSummary.completedSets}/{sessionSummary.totalSets}
                 </div>
+              </div>
+            </div>
+
+            {/* Activity Metrics (Calories Burned & Steps) */}
+            <div
+              style={{
+                background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.12), rgba(249, 115, 22, 0.08))',
+                border: '1.5px solid rgba(239, 68, 68, 0.35)',
+                borderRadius: '16px',
+                padding: '16px 14px',
+                marginBottom: '20px',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '12px',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <IonIcon icon={flameOutline} style={{ color: '#f87171', fontSize: '1.3rem' }} />
+                  <span style={{ fontWeight: 800, color: '#f8fafc', fontSize: '0.98rem' }}>
+                    Métricas de Actividad (Smartwatch)
+                  </span>
+                </div>
+                {hasEditedMetrics ? (
+                  <span
+                    style={{
+                      fontSize: '0.74rem',
+                      color: '#10b981',
+                      fontWeight: 800,
+                      background: 'rgba(16, 185, 129, 0.15)',
+                      padding: '3px 8px',
+                      borderRadius: '8px',
+                      border: '1px solid rgba(16, 185, 129, 0.3)',
+                    }}
+                  >
+                    ✓ Guardado
+                  </span>
+                ) : (
+                  <span
+                    style={{
+                      fontSize: '0.72rem',
+                      color: '#94a3b8',
+                      background: '#10141c',
+                      padding: '3px 8px',
+                      borderRadius: '8px',
+                      border: '1px solid #232c3d',
+                    }}
+                  >
+                    Estimación sugerida
+                  </span>
+                )}
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                {/* Calorías */}
+                <div>
+                  <label
+                    style={{
+                      display: 'block',
+                      fontSize: '0.74rem',
+                      fontWeight: 800,
+                      color: '#f87171',
+                      marginBottom: '6px',
+                    }}
+                  >
+                    🔥 CALORÍAS QUEMADAS
+                  </label>
+                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      value={summaryCalories}
+                      onFocus={() => setRedirectSeconds(999)}
+                      onChange={(e) => handleUpdateMetrics(e.target.value, summarySteps)}
+                      placeholder="kcal"
+                      style={{
+                        width: '100%',
+                        background: '#0d1117',
+                        border: '1.5px solid rgba(239, 68, 68, 0.4)',
+                        borderRadius: '12px',
+                        color: '#ffffff',
+                        padding: '10px 42px 10px 12px',
+                        fontSize: '1.1rem',
+                        fontWeight: 800,
+                        fontVariantNumeric: 'tabular-nums',
+                        outline: 'none',
+                      }}
+                    />
+                    <span
+                      style={{
+                        position: 'absolute',
+                        right: '10px',
+                        color: '#f87171',
+                        fontSize: '0.74rem',
+                        fontWeight: 700,
+                        pointerEvents: 'none',
+                      }}
+                    >
+                      kcal
+                    </span>
+                  </div>
+                </div>
+
+                {/* Pasos */}
+                <div>
+                  <label
+                    style={{
+                      display: 'block',
+                      fontSize: '0.74rem',
+                      fontWeight: 800,
+                      color: '#38bdf8',
+                      marginBottom: '6px',
+                    }}
+                  >
+                    👟 PASOS SESIÓN
+                  </label>
+                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      value={summarySteps}
+                      onFocus={() => setRedirectSeconds(999)}
+                      onChange={(e) => handleUpdateMetrics(summaryCalories, e.target.value)}
+                      placeholder="pasos"
+                      style={{
+                        width: '100%',
+                        background: '#0d1117',
+                        border: '1.5px solid rgba(56, 189, 248, 0.4)',
+                        borderRadius: '12px',
+                        color: '#ffffff',
+                        padding: '10px 44px 10px 12px',
+                        fontSize: '1.1rem',
+                        fontWeight: 800,
+                        fontVariantNumeric: 'tabular-nums',
+                        outline: 'none',
+                      }}
+                    />
+                    <span
+                      style={{
+                        position: 'absolute',
+                        right: '8px',
+                        color: '#38bdf8',
+                        fontSize: '0.74rem',
+                        fontWeight: 700,
+                        pointerEvents: 'none',
+                      }}
+                    >
+                      pasos
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  marginTop: '10px',
+                  fontSize: '0.74rem',
+                  color: '#94a3b8',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+              >
+                <span>⌚ Puedes editar las métricas con lo que marcó tu smartwatch o pulsera.</span>
               </div>
             </div>
 
@@ -1412,13 +1614,28 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
               }
 
               const finalDurationSecs = finishSnapshotSeconds ?? elapsedSeconds;
+              const finalDurationMins = Math.max(1, Math.round(finalDurationSecs / 60));
+              const userWeight = profile?.initialWeight || 70;
+              const estCalories = calculateEstimatedCaloriesBurned(finalDurationMins, userWeight);
+              const estSteps = Math.round(finalDurationMins * 40);
+
+              const finishedSession = finishActiveWorkout(undefined, shouldSync, estCalories, estSteps);
+              const currentId = finishedSession?.id || activeWorkout.id;
+
+              setSavedSessionId(currentId);
+              setSummaryCalories(String(estCalories));
+              setSummarySteps(String(estSteps));
+              setHasEditedMetrics(false);
 
               // Build snapshot summary before ending activeWorkout
               const summary: SessionSummary = {
+                sessionId: currentId,
                 routineName: activeWorkout.routineName || 'Entrenamiento',
                 durationFormatted: formatTime(finalDurationSecs),
                 totalSets: totalSetsCount,
                 completedSets: completedSetsCount,
+                caloriesBurned: estCalories,
+                steps: estSteps,
                 totalVolumeKg: (activeWorkout.exercises || []).reduce((acc, ex) => {
                   let exVol = 0;
                   (ex.sets || []).forEach((s) => {
@@ -1442,9 +1659,8 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
               };
 
               handleCloseFinishAlert();
-              finishActiveWorkout(undefined, shouldSync);
               setSessionSummary(summary);
-              setRedirectSeconds(15);
+              setRedirectSeconds(30);
             },
           },
         ]}

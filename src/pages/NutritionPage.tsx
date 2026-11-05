@@ -35,9 +35,11 @@ import {
   moonOutline,
   cafeOutline,
   fastFoodOutline,
+  footstepsOutline,
+  barbellOutline,
 } from 'ionicons/icons';
 import { useApp } from '../context/AppContext';
-import { FoodEntry, MealType, ActivityLevel } from '../types';
+import { FoodEntry, MealType, ActivityLevel, DailyActivity } from '../types';
 import { formatDateDDMMYYYY } from '../services/storage';
 import { FoodEntryModal } from '../components/FoodEntryModal';
 import { AppHeader } from '../components/AppHeader';
@@ -49,6 +51,9 @@ export const NutritionPage: React.FC = () => {
     calorieRecommendation,
     activityLevel,
     setActivityLevel,
+    workoutSessions,
+    dailyActivities,
+    saveDailyActivity,
     profile,
   } = useApp();
 
@@ -57,6 +62,7 @@ export const NutritionPage: React.FC = () => {
     new Date().toISOString().split('T')[0]
   );
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showActivityAlert, setShowActivityAlert] = useState(false);
   const [entryToEdit, setEntryToEdit] = useState<FoodEntry | null>(null);
   const [defaultMealType, setDefaultMealType] = useState<MealType>('almuerzo');
   const [entryToDelete, setEntryToDelete] = useState<string | null>(null);
@@ -83,10 +89,29 @@ export const NutritionPage: React.FC = () => {
   // Filter entries for the selected day
   const dayEntries = foodEntries.filter((f) => f.date === selectedDate);
 
+  // Workouts and Activity on selected day
+  const dayWorkouts = workoutSessions.filter((s) => {
+    const sDate = (s.completedAt || s.date || '').split('T')[0];
+    return sDate === selectedDate;
+  });
+  const workoutCaloriesBurned = dayWorkouts.reduce(
+    (sum, s) => sum + (s.caloriesBurned || 0),
+    0
+  );
+  const workoutSteps = dayWorkouts.reduce((sum, s) => sum + (s.steps || 0), 0);
+
+  const dayActivity = dailyActivities.find((a) => a.date === selectedDate);
+  const manualCaloriesBurned = dayActivity?.caloriesBurned || 0;
+  const manualSteps = dayActivity?.steps || 0;
+
+  const totalCaloriesBurned = workoutCaloriesBurned + manualCaloriesBurned;
+  const totalSteps = manualSteps > 0 ? manualSteps : workoutSteps;
+
   const totalCaloriesConsumed = dayEntries.reduce((sum, item) => sum + item.calories, 0);
+  const netCalories = Math.max(0, totalCaloriesConsumed - totalCaloriesBurned);
   const targetCalories = calorieRecommendation.targetCalories;
-  const remainingCalories = targetCalories - totalCaloriesConsumed;
-  const progressRatio = targetCalories > 0 ? Math.min(totalCaloriesConsumed / targetCalories, 1.25) : 0;
+  const remainingCalories = targetCalories - netCalories;
+  const progressRatio = targetCalories > 0 ? Math.min(netCalories / targetCalories, 1.25) : 0;
 
   // Macros totals
   const totalProtein = dayEntries.reduce((sum, item) => sum + (item.proteinGrams || 0), 0);
@@ -183,10 +208,10 @@ export const NutritionPage: React.FC = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' }}>
               <div>
                 <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--ion-color-medium)', letterSpacing: '0.6px', textTransform: 'uppercase' }}>
-                  Balance Calórico Diario
+                  Calorías Netas / Meta
                 </span>
                 <div style={{ fontSize: '2.3rem', fontWeight: 900, margin: '4px 0', letterSpacing: '-0.8px' }}>
-                  {totalCaloriesConsumed}
+                  {netCalories}
                   <span style={{ fontSize: '1.05rem', fontWeight: 600, color: 'var(--ion-color-medium)', marginLeft: '6px' }}>
                     / {targetCalories} kcal
                   </span>
@@ -203,7 +228,7 @@ export const NutritionPage: React.FC = () => {
                 }}
               >
                 <div style={{ fontSize: '0.72rem', fontWeight: 800, color: remainingCalories >= 0 ? 'var(--ion-color-success)' : 'var(--ion-color-danger)', letterSpacing: '0.5px' }}>
-                  {remainingCalories >= 0 ? 'RESTANTE' : 'EXCESO'}
+                  {remainingCalories >= 0 ? 'DISPONIBLE' : 'EXCESO'}
                 </div>
                 <div
                   style={{
@@ -214,6 +239,78 @@ export const NutritionPage: React.FC = () => {
                 >
                   {Math.abs(remainingCalories)} kcal
                 </div>
+              </div>
+            </div>
+
+            {/* Quick 3-Pill Breakdown: Consumidas, Quemadas, Pasos */}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr 1fr',
+                gap: '8px',
+                marginTop: '14px',
+              }}
+            >
+              <div
+                style={{
+                  background: 'rgba(59, 130, 246, 0.08)',
+                  border: '1px solid rgba(59, 130, 246, 0.22)',
+                  borderRadius: '12px',
+                  padding: '8px 6px',
+                  textAlign: 'center',
+                }}
+              >
+                <div style={{ fontSize: '0.68rem', color: '#60a5fa', fontWeight: 800 }}>
+                  COMIDA
+                </div>
+                <div style={{ fontSize: '1.1rem', fontWeight: 900, color: '#ffffff', marginTop: '2px' }}>
+                  {totalCaloriesConsumed}
+                </div>
+                <div style={{ fontSize: '0.65rem', color: '#94a3b8' }}>kcal</div>
+              </div>
+
+              <div
+                onClick={() => setShowActivityAlert(true)}
+                style={{
+                  background: 'rgba(239, 68, 68, 0.08)',
+                  border: '1px solid rgba(239, 68, 68, 0.25)',
+                  borderRadius: '12px',
+                  padding: '8px 6px',
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                }}
+                title="Toca para ajustar calorías quemadas"
+              >
+                <div style={{ fontSize: '0.68rem', color: '#f87171', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}>
+                  <IonIcon icon={flameOutline} style={{ fontSize: '0.8rem' }} />
+                  QUEMADAS
+                </div>
+                <div style={{ fontSize: '1.1rem', fontWeight: 900, color: '#f87171', marginTop: '2px' }}>
+                  -{totalCaloriesBurned}
+                </div>
+                <div style={{ fontSize: '0.65rem', color: '#94a3b8' }}>kcal ✎</div>
+              </div>
+
+              <div
+                onClick={() => setShowActivityAlert(true)}
+                style={{
+                  background: 'rgba(56, 189, 248, 0.08)',
+                  border: '1px solid rgba(56, 189, 248, 0.25)',
+                  borderRadius: '12px',
+                  padding: '8px 6px',
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                }}
+                title="Toca para ajustar pasos"
+              >
+                <div style={{ fontSize: '0.68rem', color: '#38bdf8', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}>
+                  <IonIcon icon={footstepsOutline} style={{ fontSize: '0.8rem' }} />
+                  PASOS
+                </div>
+                <div style={{ fontSize: '1.1rem', fontWeight: 900, color: '#38bdf8', marginTop: '2px' }}>
+                  {totalSteps.toLocaleString()}
+                </div>
+                <div style={{ fontSize: '0.65rem', color: '#94a3b8' }}>pasos ✎</div>
               </div>
             </div>
 
@@ -480,6 +577,47 @@ export const NutritionPage: React.FC = () => {
           header="📐 Ciencia de tus Calorías"
           message={`Tus calorías se calculan con la fórmula Mifflin-St Jeor (reconocida médicamente como la más precisa):\n\n1. Tasa Metabólica Basal (TMB): Calorías que quemas en reposo según tu peso, estatura, edad y sexo.\n2. Gasto Energético Total (GET): TMB multiplicado por tu factor de actividad física.\n3. Ajuste por IMC (${calorieRecommendation.bmi}) y Objetivo (${profile?.targetWeight ? profile.targetWeight + ' kg' : 'Saludable'}): Se aplica un déficit o superávit seguro para optimizar tu composición corporal sin perjudicar tu metabolismo.`}
           buttons={['Entendido']}
+        />
+
+        {/* Activity & Steps Registration / Adjustment Alert */}
+        <IonAlert
+          isOpen={showActivityAlert}
+          onDidDismiss={() => setShowActivityAlert(false)}
+          header="Actividad & Pasos del Día"
+          subHeader={formatDateDDMMYYYY(selectedDate)}
+          message="Ingresa o ajusta los pasos y calorías quemadas totales del día marcadas por tu smartwatch o pulsera."
+          inputs={[
+            {
+              name: 'steps',
+              type: 'number',
+              placeholder: 'Pasos del día (ej. 8500)',
+              value: totalSteps > 0 ? String(totalSteps) : '',
+              min: 0,
+            },
+            {
+              name: 'caloriesBurned',
+              type: 'number',
+              placeholder: 'Calorías quemadas totales (kcal)',
+              value: totalCaloriesBurned > 0 ? String(totalCaloriesBurned) : '',
+              min: 0,
+            },
+          ]}
+          buttons={[
+            { text: 'Cancelar', role: 'cancel' },
+            {
+              text: 'Guardar',
+              handler: (data) => {
+                const sNum = parseInt(data.steps, 10);
+                const cNum = parseInt(data.caloriesBurned, 10);
+                saveDailyActivity({
+                  date: selectedDate,
+                  steps: !isNaN(sNum) && sNum >= 0 ? sNum : undefined,
+                  caloriesBurned: !isNaN(cNum) && cNum >= 0 ? cNum : undefined,
+                });
+                setToastMessage('Actividad y pasos del día actualizados 👟🔥');
+              },
+            },
+          ]}
         />
 
         {/* Toast */}

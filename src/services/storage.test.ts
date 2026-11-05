@@ -9,6 +9,7 @@ import {
   getSuggestedTargetWeight,
   getStartOfWeek,
   getOrderedWeekDayNames,
+  calculateEstimatedCaloriesBurned,
   StorageService,
   DEFAULT_EXERCISES,
 } from './storage';
@@ -304,6 +305,27 @@ describe('Storage and Fitness Calculations', () => {
       const friOrdered = getOrderedWeekDayNames(5);
       expect(friOrdered[0].short).toBe('Vie');
       expect(friOrdered[6].short).toBe('Jue');
+    });
+  });
+
+  describe('Activity and Calorie Burn estimation', () => {
+    it('estimates calories burned based on duration and weight', () => {
+      // 60 minutes, 75 kg => 0.10 * 75 * 60 = 450 kcal
+      const cal = calculateEstimatedCaloriesBurned(60, 75);
+      expect(cal).toBe(450);
+    });
+
+    it('saves and retrieves daily activity (steps and calories)', () => {
+      StorageService.saveDailyActivity({
+        date: '2026-11-04',
+        steps: 8250,
+        caloriesBurned: 480,
+      });
+
+      const act = StorageService.getDailyActivity('2026-11-04');
+      expect(act).not.toBeNull();
+      expect(act?.steps).toBe(8250);
+      expect(act?.caloriesBurned).toBe(480);
     });
   });
 });

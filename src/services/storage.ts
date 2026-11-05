@@ -9,6 +9,7 @@ import {
   FoodEntry,
   ActivityLevel,
   CalorieRecommendation,
+  DailyActivity,
 } from '../types';
 
 const STORAGE_KEYS = {
@@ -20,6 +21,7 @@ const STORAGE_KEYS = {
   FOOD_ENTRIES: 'fittrack_food_entries',
   ACTIVITY_LEVEL: 'fittrack_user_activity_level',
   ACTIVE_WORKOUT: 'fittrack_active_workout',
+  DAILY_ACTIVITIES: 'fittrack_daily_activities',
 };
 
 export { DEFAULT_EXERCISES };
@@ -657,6 +659,37 @@ export const StorageService = {
     return list;
   },
 
+  // Daily Activity (Steps & Active Calories)
+  getDailyActivities(): DailyActivity[] {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.DAILY_ACTIVITIES);
+      if (!data) return [];
+      return JSON.parse(data) as DailyActivity[];
+    } catch (e) {
+      console.error('Error getting daily activities:', e);
+      return [];
+    }
+  },
+
+  getDailyActivity(date: string): DailyActivity | null {
+    const list = this.getDailyActivities();
+    return list.find((a) => a.date === date) || null;
+  },
+
+  saveDailyActivity(activity: DailyActivity): DailyActivity[] {
+    const list = this.getDailyActivities();
+    const existingIndex = list.findIndex((a) => a.date === activity.date);
+    let updated: DailyActivity[];
+    if (existingIndex >= 0) {
+      updated = [...list];
+      updated[existingIndex] = { ...updated[existingIndex], ...activity };
+    } else {
+      updated = [activity, ...list];
+    }
+    localStorage.setItem(STORAGE_KEYS.DAILY_ACTIVITIES, JSON.stringify(updated));
+    return updated;
+  },
+
   // Food & Nutrition Entries
   getFoodEntries(): FoodEntry[] {
     try {
@@ -1051,6 +1084,20 @@ export function calculateCalorieRecommendation(
     bmiCategory: bmiCat.category,
     deficitOrSurplus,
   };
+}
+
+/**
+ * Estimates calories burned during a gym strength training workout session.
+ * Standard Compendium of Physical Activities MET value for resistance training ~ 6.0 METs.
+ */
+export function calculateEstimatedCaloriesBurned(
+  durationMinutes: number,
+  weightKg: number = 70
+): number {
+  const rate = 0.10; // ~6.0 METs normalized kcal/kg/min
+  const safeWeight = Math.max(weightKg || 70, 40);
+  const safeMins = Math.max(durationMinutes || 1, 1);
+  return Math.max(Math.round(rate * safeWeight * safeMins), 15);
 }
 
 

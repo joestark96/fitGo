@@ -1,4 +1,4 @@
-export const APP_VERSION = '1.0.2';
+export const APP_VERSION = '1.0.3';
 
 export type Gender = 'male' | 'female' | 'other' | 'prefer_not_to_say';
 
@@ -96,6 +96,15 @@ export interface WorkoutSession {
   exercises: WorkoutExerciseResult[];
   notes?: string;
   isCompleted: boolean;
+  caloriesBurned?: number;
+  steps?: number;
+}
+
+export interface DailyActivity {
+  date: string; // YYYY-MM-DD
+  steps?: number;
+  caloriesBurned?: number;
+  notes?: string;
 }
 
 export interface WeightRecord {

@@ -12,6 +12,7 @@ import {
   ActivityLevel,
   CalorieRecommendation,
   RoutineExerciseConfig,
+  DailyActivity,
 } from '../types';
 import { StorageService, calculateBmi, calculateCalorieRecommendation } from '../services/storage';
 import { notificationService } from '../services/notificationService';
@@ -25,6 +26,7 @@ interface AppContextType {
   workoutSessions: WorkoutSession[];
   activeWorkout: WorkoutSession | null;
   foodEntries: FoodEntry[];
+  dailyActivities: DailyActivity[];
   activityLevel: ActivityLevel;
   calorieRecommendation: CalorieRecommendation;
   saveProfile: (profile: UserProfile) => void;
@@ -35,8 +37,10 @@ interface AppContextType {
   deleteWeightRecord: (id: string) => void;
   saveFoodEntry: (entry: FoodEntry) => void;
   deleteFoodEntry: (id: string) => void;
+  saveDailyActivity: (activity: DailyActivity) => void;
   setActivityLevel: (level: ActivityLevel) => void;
   startWorkout: (routine: Routine) => WorkoutSession;
+  updateWorkoutSession: (session: WorkoutSession) => void;
   deleteWorkoutSession: (sessionId: string) => void;
   toggleSetCompleted: (exerciseIndex: number, setIndex: number) => void;
   updateSetValues: (
@@ -49,7 +53,12 @@ interface AppContextType {
   reorderExerciseInActiveWorkout: (fromIndex: number, toIndex: number) => void;
   addSetToActiveWorkout: (exerciseIndex: number) => void;
   removeSetFromActiveWorkout: (exerciseIndex: number, setIndex?: number) => void;
-  finishActiveWorkout: (notes?: string, syncToRoutine?: boolean) => void;
+  finishActiveWorkout: (
+    notes?: string,
+    syncToRoutine?: boolean,
+    caloriesBurned?: number,
+    steps?: number
+  ) => WorkoutSession | null;
   cancelActiveWorkout: () => void;
   refreshData: () => void;
   resetAllData: () => void;
@@ -66,6 +75,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [workoutSessions, setWorkoutSessions] = useState<WorkoutSession[]>([]);
   const [activeWorkout, setActiveWorkout] = useState<WorkoutSession | null>(null);
   const [foodEntries, setFoodEntries] = useState<FoodEntry[]>([]);
+  const [dailyActivities, setDailyActivities] = useState<DailyActivity[]>([]);
   const [activityLevel, setActivityLevelState] = useState<ActivityLevel>('light');
 
   const activeWorkoutRef = useRef<WorkoutSession | null>(null);
@@ -82,6 +92,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setWeightRecords(StorageService.getWeightRecords());
     setWorkoutSessions(StorageService.getWorkoutSessions());
     setFoodEntries(StorageService.getFoodEntries());
+    setDailyActivities(StorageService.getDailyActivities());
     setActivityLevelState(StorageService.getActivityLevel());
     const savedActive = StorageService.getActiveWorkout();
     if (savedActive) {
@@ -384,8 +395,23 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     StorageService.saveActiveWorkout(updated);
   };
 
-  const finishActiveWorkout = (notes?: string, syncToRoutine?: boolean) => {
-    if (!activeWorkout) return;
+  const handleSaveDailyActivity = (activity: DailyActivity) => {
+    const updated = StorageService.saveDailyActivity(activity);
+    setDailyActivities(updated);
+  };
+
+  const updateWorkoutSession = (session: WorkoutSession) => {
+    const updated = StorageService.saveWorkoutSession(session);
+    setWorkoutSessions(updated);
+  };
+
+  const finishActiveWorkout = (
+    notes?: string,
+    syncToRoutine?: boolean,
+    caloriesBurned?: number,
+    steps?: number
+  ): WorkoutSession | null => {
+    if (!activeWorkout) return null;
     const completedAt = new Date().toISOString();
     const startMs = new Date(activeWorkout.startedAt).getTime();
     const durationMinutes = Math.max(1, Math.round((Date.now() - startMs) / 60000));
@@ -426,6 +452,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       completedAt,
       durationMinutes,
       notes: notes || activeWorkout.notes,
+      caloriesBurned: caloriesBurned !== undefined ? caloriesBurned : activeWorkout.caloriesBurned,
+      steps: steps !== undefined ? steps : activeWorkout.steps,
       isCompleted: true,
     };
 
@@ -434,6 +462,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setActiveWorkout(null);
     StorageService.saveActiveWorkout(null);
     notificationService.cancelWorkoutReminders();
+    return finishedSession;
   };
 
   const cancelActiveWorkout = () => {
@@ -464,6 +493,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         workoutSessions,
         activeWorkout,
         foodEntries,
+        dailyActivities,
         activityLevel,
         calorieRecommendation,
         saveProfile: handleSaveProfile,
@@ -474,8 +504,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         deleteWeightRecord: handleDeleteWeightRecord,
         saveFoodEntry: handleSaveFoodEntry,
         deleteFoodEntry: handleDeleteFoodEntry,
+        saveDailyActivity: handleSaveDailyActivity,
         setActivityLevel: handleSetActivityLevel,
         startWorkout,
+        updateWorkoutSession,
         deleteWorkoutSession,
         toggleSetCompleted,
         updateSetValues,

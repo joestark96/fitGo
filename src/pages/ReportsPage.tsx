@@ -1720,6 +1720,42 @@ export const ReportsPage: React.FC = () => {
                                   </div>
                                 </div>
                               </div>
+
+                              {/* Badges for calories burned and steps if present */}
+                              {(session.caloriesBurned !== undefined || session.steps !== undefined) && (
+                                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px' }}>
+                                  {session.caloriesBurned !== undefined && (
+                                    <span
+                                      style={{
+                                        background: 'rgba(239, 68, 68, 0.12)',
+                                        border: '1px solid rgba(239, 68, 68, 0.3)',
+                                        color: '#f87171',
+                                        padding: '2px 8px',
+                                        borderRadius: '6px',
+                                        fontSize: '0.74rem',
+                                        fontWeight: 700,
+                                      }}
+                                    >
+                                      🔥 {session.caloriesBurned} kcal
+                                    </span>
+                                  )}
+                                  {session.steps !== undefined && (
+                                    <span
+                                      style={{
+                                        background: 'rgba(56, 189, 248, 0.12)',
+                                        border: '1px solid rgba(56, 189, 248, 0.3)',
+                                        color: '#38bdf8',
+                                        padding: '2px 8px',
+                                        borderRadius: '6px',
+                                        fontSize: '0.74rem',
+                                        fontWeight: 700,
+                                      }}
+                                    >
+                                      👟 {session.steps.toLocaleString()} pasos
+                                    </span>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           );
                         })}
@@ -1875,6 +1911,22 @@ export const ReportsPage: React.FC = () => {
                         {calculateSessionVolume(selectedSessionDetail)} kg
                       </div>
                     </div>
+                    {selectedSessionDetail.caloriesBurned !== undefined && (
+                      <div>
+                        <div style={{ fontSize: '0.78rem', color: '#94a3b8' }}>Calorías Quemadas</div>
+                        <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#f87171' }}>
+                          🔥 {selectedSessionDetail.caloriesBurned} kcal
+                        </div>
+                      </div>
+                    )}
+                    {selectedSessionDetail.steps !== undefined && (
+                      <div>
+                        <div style={{ fontSize: '0.78rem', color: '#94a3b8' }}>Pasos Alcanzados</div>
+                        <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#38bdf8' }}>
+                          👟 {selectedSessionDetail.steps.toLocaleString()}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {selectedSessionDetail.notes && (
