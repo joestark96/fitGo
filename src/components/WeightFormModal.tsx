@@ -51,7 +51,7 @@ export const WeightFormModal: React.FC<WeightFormModalProps> = ({
   const [date, setDate] = useState<string>(() => getLocalDateString());
   const [weightKg, setWeightKg] = useState<string>('');
   const [weightLbs, setWeightLbs] = useState<string>('');
-  const [weightUnit, setWeightUnit] = useState<'kg' | 'lb'>('kg');
+  const [weightUnit, setWeightUnit] = useState<'kg' | 'lb'>(() => profile?.preferredWeightUnit || 'kg');
   const [showConverterModal, setShowConverterModal] = useState<boolean>(false);
   const [heightCm, setHeightCm] = useState<string>('170');
 
@@ -85,7 +85,7 @@ export const WeightFormModal: React.FC<WeightFormModalProps> = ({
       const defaultKg = profile?.targetWeight ? profile.targetWeight.toString() : '70';
       setWeightKg(defaultKg);
       setWeightLbs((parseFloat(defaultKg) * 2.20462).toFixed(1));
-      setWeightUnit('kg');
+      setWeightUnit(profile?.preferredWeightUnit || 'kg');
       setWaistCm('');
       setHipsCm('');
       setChestCm('');

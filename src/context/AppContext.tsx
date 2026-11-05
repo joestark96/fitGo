@@ -204,13 +204,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const totalSets = item.targetSets && item.targetSets > 0 ? item.targetSets : 3;
 
       for (let i = 1; i <= totalSets; i++) {
+        const setCfg = item.setsConfig && item.setsConfig[i - 1];
         sets.push({
           setNumber: i,
           completed: false,
-          actualReps: item.mode !== 'duration' ? (item.targetReps ?? 10) : undefined,
-          actualWeightKg: item.mode === 'weight_reps' ? (item.targetWeightKg ?? 20) : undefined,
+          actualReps: item.mode !== 'duration' ? (setCfg?.targetReps ?? item.targetReps ?? 10) : undefined,
+          actualWeightKg: item.mode === 'weight_reps' ? (setCfg?.targetWeightKg ?? item.targetWeightKg ?? 20) : undefined,
           actualDurationSeconds:
-            item.mode === 'duration' ? (item.targetDurationSeconds ?? 30) : undefined,
+            item.mode === 'duration' ? (setCfg?.targetDurationSeconds ?? item.targetDurationSeconds ?? 30) : undefined,
         });
       }
 
@@ -423,6 +424,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         const updatedRoutineExercises: RoutineExerciseConfig[] = (activeWorkout.exercises || []).map((ex, idx) => {
           const existing = (routine.exercises || []).find((re) => re.exerciseId === ex.exerciseId);
           const firstSet = (ex.sets || [])[0];
+          const setsConfig = (ex.sets || []).map((s) => ({
+            setNumber: s.setNumber,
+            targetReps: s.actualReps,
+            targetWeightKg: s.actualWeightKg,
+            targetDurationSeconds: s.actualDurationSeconds,
+          }));
           return {
             id: existing?.id || `rex-${Date.now()}-${idx}`,
             exerciseId: ex.exerciseId,
@@ -435,6 +442,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             targetDurationSeconds: firstSet?.actualDurationSeconds ?? existing?.targetDurationSeconds ?? 30,
             restSeconds: existing?.restSeconds ?? 60,
             notes: existing?.notes,
+            setsConfig,
           };
         });
 

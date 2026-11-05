@@ -31,6 +31,7 @@ interface WeightConverterModalProps {
   initialLbs?: number;
   initialKg?: number;
   onApplyKg?: (kg: number) => void;
+  targetInputDescription?: string;
 }
 
 const COMMON_DUMBBELLS = [10, 15, 20, 25, 30, 35, 40, 45, 50, 60, 70, 80];
@@ -43,6 +44,7 @@ export const WeightConverterModal: React.FC<WeightConverterModalProps> = ({
   initialLbs,
   initialKg,
   onApplyKg,
+  targetInputDescription,
 }) => {
   const [lbsValue, setLbsValue] = useState<string>('50');
   const [kgValue, setKgValue] = useState<string>('22.7');
@@ -134,6 +136,49 @@ export const WeightConverterModal: React.FC<WeightConverterModalProps> = ({
       </IonHeader>
 
       <IonContent className="ion-padding">
+        {/* Banner if a weight input is selected */}
+        {onApplyKg && (
+          <div
+            style={{
+              background: 'rgba(59, 130, 246, 0.12)',
+              border: '1.5px solid rgba(59, 130, 246, 0.35)',
+              borderRadius: '14px',
+              padding: '10px 14px',
+              marginBottom: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '10px',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+              <IonIcon icon={scaleOutline} style={{ color: '#60a5fa', fontSize: '1.3rem', flexShrink: 0 }} />
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: '0.72rem', fontWeight: 800, color: '#93c5fd', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                  Casilla de peso seleccionada
+                </div>
+                <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#ffffff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {targetInputDescription || 'Casilla activa'}
+                </div>
+              </div>
+            </div>
+            {currentKgNum > 0 && (
+              <IonButton
+                size="small"
+                color="success"
+                style={{ fontWeight: 800, margin: 0, borderRadius: '8px', flexShrink: 0 }}
+                onClick={() => {
+                  onApplyKg(Number(currentKgNum.toFixed(1)));
+                  onClose();
+                }}
+              >
+                <IonIcon slot="start" icon={checkmarkOutline} />
+                Insertar
+              </IonButton>
+            )}
+          </div>
+        )}
+
         {/* Converter Cards (Bidirectional) */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
           {/* LBS INPUT */}
@@ -365,6 +410,25 @@ export const WeightConverterModal: React.FC<WeightConverterModalProps> = ({
             })}
           </div>
         </div>
+
+        {/* Large Apply Button if target input is provided */}
+        {onApplyKg && currentKgNum > 0 && (
+          <div style={{ marginTop: '16px', marginBottom: '14px' }}>
+            <IonButton
+              expand="block"
+              size="large"
+              color="success"
+              style={{ borderRadius: '14px', fontWeight: 800 }}
+              onClick={() => {
+                onApplyKg(Number(currentKgNum.toFixed(1)));
+                onClose();
+              }}
+            >
+              <IonIcon slot="start" icon={checkmarkOutline} />
+              Insertar {currentKgNum.toFixed(1)} kg ({lbsValue} lb) en casilla
+            </IonButton>
+          </div>
+        )}
 
         {/* Formula reference note */}
         <div

@@ -92,6 +92,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onComp
       height: heightNum,
       initialWeight: weightNum,
       targetWeight: finalTargetWeight,
+      preferredWeightUnit: 'kg',
       weekStartDay,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),

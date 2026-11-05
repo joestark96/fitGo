@@ -11,28 +11,22 @@
     />
     <meta name="format-detection" content="telephone=no" />
     <meta name="msapplication-tap-highlight" content="no" />
-    
-    <!-- Redirección automática a la landing page en GitHub Pages -->
-    <script>
-      if (window.location.hostname.endsWith('github.io') && !window.location.pathname.includes('/docs')) {
-        var basePath = window.location.pathname.replace(/\/+$/, '');
-        window.location.replace(window.location.origin + basePath + '/docs/');
-      }
-    </script>
 
     <!-- Google Fonts: Plus Jakarta Sans (Athletic & Tech-forward) -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
 
-    <link rel="manifest" href="/manifest.json" />
+    <link rel="manifest" href="./manifest.json" />
+    <link rel="shortcut icon" type="image/png" href="./favicon.png" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
     
-    <link rel="shortcut icon" type="image/png" href="/favicon.png" />
-    
-    <!-- add to homescreen for ios -->
+    <!-- add to homescreen for ios / mobile -->
     <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="FitTrack" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="theme-color" content="#111827" />
   </head>
   <body>
     <div id="root"></div>

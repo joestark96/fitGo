@@ -48,6 +48,7 @@ export const ProfilePage: React.FC = () => {
   const [gender, setGender] = useState<Gender>('male');
   const [height, setHeight] = useState('170');
   const [targetWeight, setTargetWeight] = useState('68');
+  const [preferredWeightUnit, setPreferredWeightUnit] = useState<'kg' | 'lb'>('kg');
   const [weekStartDay, setWeekStartDay] = useState<number>(1);
 
   const [showToast, setShowToast] = useState(false);
@@ -126,6 +127,7 @@ export const ProfilePage: React.FC = () => {
       setGender(profile.gender || 'male');
       setHeight(profile.height ? profile.height.toString() : '170');
       setTargetWeight(profile.targetWeight ? profile.targetWeight.toString() : '');
+      setPreferredWeightUnit(profile.preferredWeightUnit || 'kg');
       setWeekStartDay(profile.weekStartDay !== undefined ? profile.weekStartDay : 1);
     }
   }, [profile]);
@@ -148,6 +150,7 @@ export const ProfilePage: React.FC = () => {
       height: heightNum,
       initialWeight: profile ? profile.initialWeight : undefined,
       targetWeight: targetWeight ? parseFloat(targetWeight) : undefined,
+      preferredWeightUnit: preferredWeightUnit,
       weekStartDay: weekStartDay,
       createdAt: profile ? profile.createdAt : new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -302,6 +305,23 @@ export const ProfilePage: React.FC = () => {
               />
               <IonText color="medium" style={{ fontSize: '0.8rem', display: 'block', marginTop: '6px' }}>
                 Meta de peso para el cálculo de progreso e IMC
+              </IonText>
+            </IonItem>
+
+            <IonItem lines="full">
+              <IonLabel position="stacked" style={{ fontWeight: 600 }}>
+                ⚖️ Unidad de peso preferida
+              </IonLabel>
+              <IonSelect
+                value={preferredWeightUnit}
+                interface="popover"
+                onIonChange={(e) => setPreferredWeightUnit(e.detail.value as 'kg' | 'lb')}
+              >
+                <IonSelectOption value="kg">Kilogramos (kg)</IonSelectOption>
+                <IonSelectOption value="lb">Libras (lb)</IonSelectOption>
+              </IonSelect>
+              <IonText color="medium" style={{ fontSize: '0.8rem', display: 'block', marginTop: '6px' }}>
+                Unidad predeterminada para registrar pesos en entrenamientos y rutinas
               </IonText>
             </IonItem>
 

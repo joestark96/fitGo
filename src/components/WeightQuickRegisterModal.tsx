@@ -18,7 +18,7 @@ export const WeightQuickRegisterModal: React.FC<WeightQuickRegisterModalProps> =
 }) => {
   const { profile, weightRecords, saveWeightRecord } = useApp();
 
-  const [unit, setUnit] = useState<'kg' | 'lbs'>('kg');
+  const [unit, setUnit] = useState<'kg' | 'lbs'>(() => profile?.preferredWeightUnit === 'lb' ? 'lbs' : 'kg');
   const [currentVal, setCurrentVal] = useState<number>(90.7);
   const [selectedDate, setSelectedDate] = useState<string>(() => {
     const now = new Date();

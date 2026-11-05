@@ -9,6 +9,7 @@ export interface UserProfile {
   height: number; // in cm
   initialWeight?: number; // in kg
   targetWeight?: number; // in kg
+  preferredWeightUnit?: 'kg' | 'lb';
   weekStartDay?: number; // 0 = Domingo, 1 = Lunes, ..., 6 = Sábado
   createdAt: string;
   updatedAt: string;
@@ -45,6 +46,13 @@ export interface ExerciseDefinition {
   gifUrl?: string;
 }
 
+export interface RoutineSetTarget {
+  setNumber: number;
+  targetReps?: number;
+  targetWeightKg?: number;
+  targetDurationSeconds?: number;
+}
+
 export interface RoutineExerciseConfig {
   id: string;
   exerciseId: string;
@@ -57,6 +65,7 @@ export interface RoutineExerciseConfig {
   restSeconds?: number;
   notes?: string;
   gifUrl?: string;
+  setsConfig?: RoutineSetTarget[];
 }
 
 export interface Routine {

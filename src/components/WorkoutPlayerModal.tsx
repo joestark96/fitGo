@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   IonModal,
   IonHeader,
@@ -19,6 +19,11 @@ import {
   IonAlert,
   IonProgressBar,
   IonToast,
+  IonItemSliding,
+  IonItemOptions,
+  IonItemOption,
+  IonItem,
+  IonList,
 } from '@ionic/react';
 import {
   closeOutline,
@@ -41,13 +46,15 @@ import {
   homeOutline,
   flameOutline,
   footstepsOutline,
+  scaleOutline,
+  createOutline,
 } from 'ionicons/icons';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { ExerciseGif } from './ExerciseGif';
 import { ExerciseCatalogModal } from './ExerciseCatalogModal';
 import { WeightConverterModal } from './WeightConverterModal';
-import { ExerciseDefinition } from '../types';
+import { ExerciseDefinition, WorkoutSetResult } from '../types';
 import { StorageService, calculateEstimatedCaloriesBurned } from '../services/storage';
 
 interface WorkoutPlayerModalProps {
@@ -77,6 +84,7 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
   const {
     profile,
     activeWorkout,
+    workoutSessions,
     toggleSetCompleted,
     updateSetValues,
     addExerciseToActiveWorkout,
@@ -129,21 +137,105 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
   const [showConverterModal, setShowConverterModal] = useState<boolean>(false);
 
   // Accordion & Reorder state
+  const contentRef = useRef<HTMLIonContentElement | null>(null);
   const [expandedExIndices, setExpandedExIndices] = useState<Record<number, boolean>>({});
   const [isReordering, setIsReordering] = useState(false);
   const [draggedExIdx, setDraggedExIdx] = useState<number | null>(null);
   const [dragOverExIdx, setDragOverExIdx] = useState<number | null>(null);
 
+  // Selected weight input target for the unit converter
+  const [selectedWeightTarget, setSelectedWeightTarget] = useState<{
+    exIdx: number;
+    setIdx: number;
+    exerciseName: string;
+    setNumber: number;
+    currentKg: number;
+  } | null>(null);
+
+  // Tracks which sets are being edited individually without cascading
+  const [singleEditSets, setSingleEditSets] = useState<Record<string, boolean>>({});
+
+  const toggleSingleEditSet = (exIdx: number, setIdx: number) => {
+    const key = `${exIdx}-${setIdx}`;
+    setSingleEditSets((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  };
+
   // Weight units state per exercise ('kg' | 'lb')
   const [exerciseWeightUnits, setExerciseWeightUnits] = useState<Record<number, 'kg' | 'lb'>>({});
 
-  const getWeightUnit = (exIdx: number): 'kg' | 'lb' => exerciseWeightUnits[exIdx] || 'kg';
+  const defaultUnit = profile?.preferredWeightUnit || 'kg';
+  const getWeightUnit = (exIdx: number): 'kg' | 'lb' => exerciseWeightUnits[exIdx] || defaultUnit;
 
   const toggleWeightUnit = (exIdx: number) => {
     setExerciseWeightUnits((prev) => ({
       ...prev,
-      [exIdx]: prev[exIdx] === 'lb' ? 'kg' : 'lb',
+      [exIdx]: (prev[exIdx] || defaultUnit) === 'lb' ? 'kg' : 'lb',
     }));
+  };
+
+  // Past exercise history lookup
+  const previousExerciseHistory = useMemo(() => {
+    const pastSessions = (workoutSessions || [])
+      .filter((s) => s.isCompleted && s.id !== activeWorkout?.id)
+      .sort(
+        (a, b) =>
+          new Date(b.date || b.completedAt || 0).getTime() -
+          new Date(a.date || a.completedAt || 0).getTime()
+      );
+
+    const historyMap: Record<
+      string,
+      {
+        date: string;
+        sets: { setNumber: number; weightKg?: number; reps?: number; durationSeconds?: number }[];
+      }
+    > = {};
+
+    for (const session of pastSessions) {
+      for (const ex of session.exercises || []) {
+        if (!historyMap[ex.exerciseId] && ex.sets && ex.sets.length > 0) {
+          historyMap[ex.exerciseId] = {
+            date: session.date,
+            sets: ex.sets.map((st) => ({
+              setNumber: st.setNumber,
+              weightKg: st.actualWeightKg,
+              reps: st.actualReps,
+              durationSeconds: st.actualDurationSeconds,
+            })),
+          };
+        }
+      }
+    }
+    return historyMap;
+  }, [workoutSessions, activeWorkout?.id]);
+
+  // Update set value with downward cascade unless singleSetOnly or set is completed
+  const handleUpdateSetValue = (
+    exIdx: number,
+    setIdx: number,
+    values: Partial<WorkoutSetResult>,
+    singleSetOnly: boolean = false
+  ) => {
+    if (!activeWorkout || !activeWorkout.exercises[exIdx]) return;
+    const ex = activeWorkout.exercises[exIdx];
+    const currentSet = ex.sets?.[setIdx];
+    const isCompleted = !!currentSet?.completed;
+    const isSingle = singleSetOnly || isCompleted || !!singleEditSets[`${exIdx}-${setIdx}`];
+
+    updateSetValues(exIdx, setIdx, values);
+
+    // If not single edit mode, cascade to all subsequent uncompleted sets in this exercise
+    if (!isSingle && ex.sets) {
+      for (let i = setIdx + 1; i < ex.sets.length; i++) {
+        const nextSet = ex.sets[i];
+        if (nextSet && !nextSet.completed) {
+          updateSetValues(exIdx, i, values);
+        }
+      }
+    }
   };
 
   // Expand all exercises when workout starts or opens
@@ -336,7 +428,12 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
             exerciseIndex: exIdx,
             setIndex: setIdx,
             exerciseName: exercise.exerciseName,
+            gifUrl: exercise.gifUrl,
+            mode: exercise.mode,
             setNumber: set.setNumber,
+            weightKg: set.actualWeightKg,
+            reps: set.actualReps,
+            durationSeconds: set.actualDurationSeconds,
           };
         }
       }
@@ -352,11 +449,32 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
     const willBeCompleted = !targetSet.completed;
     toggleSetCompleted(exIdx, setIdx);
 
-    // If marked completed, start rest timer
+    // If marked completed
     if (willBeCompleted) {
-      const suggestedRest = 60;
-      setRestMaxDuration(suggestedRest);
-      setRestSecondsLeft(suggestedRest);
+      // Check if this was the last remaining uncompleted set in the entire workout
+      let remainingUncompleted = 0;
+      activeWorkout.exercises.forEach((ex, eI) => {
+        (ex.sets || []).forEach((s, sI) => {
+          if (eI === exIdx && sI === setIdx) {
+            // this set is completing now
+          } else if (!s.completed) {
+            remainingUncompleted++;
+          }
+        });
+      });
+
+      if (remainingUncompleted === 0) {
+        // Last set completed! Skip rest timer and scroll to finish button
+        setRestSecondsLeft(null);
+        setTimeout(() => {
+          contentRef.current?.scrollToBottom(500);
+        }, 120);
+        setToastMessage('🎉 ¡Todas las series completadas! Puedes finalizar tu entrenamiento.');
+      } else {
+        const suggestedRest = 60;
+        setRestMaxDuration(suggestedRest);
+        setRestSecondsLeft(suggestedRest);
+      }
     }
   };
 
@@ -902,7 +1020,7 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
         <IonProgressBar value={progress} color="success" style={{ height: '4px' }} />
       </IonHeader>
 
-      <IonContent className="ion-padding" style={{ paddingBottom: '90px' }}>
+      <IonContent ref={contentRef} className="ion-padding" style={{ paddingBottom: '90px' }}>
         {/* Exercises list header with Reorder & Accordion controls */}
         <div
           style={{
@@ -1133,15 +1251,16 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
                 style={{
                   display: 'grid',
                   gridTemplateColumns:
-                    exercise.mode === 'weight_reps' ? '44px 1fr 1fr 64px 36px' : '44px 2fr 64px 36px',
+                    exercise.mode === 'weight_reps' ? '52px 38px 1fr 1fr' : '52px 38px 2fr',
                   padding: '8px 4px',
                   fontWeight: 700,
-                  fontSize: '0.76rem',
+                  fontSize: '0.74rem',
                   color: '#94a3b8',
                   textAlign: 'center',
                   letterSpacing: '0.04em',
                 }}
               >
+                <div>LISTO</div>
                 <div>SET</div>
                 {exercise.mode === 'weight_reps' && (
                   <>
@@ -1169,220 +1288,377 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
                         <IonIcon icon={swapHorizontalOutline} style={{ fontSize: '10px' }} />
                       </button>
                     </div>
-                    <div>REPETICIONES</div>
+                    <div>REPS</div>
                   </>
                 )}
                 {exercise.mode === 'reps_only' && <div>REPETICIONES</div>}
                 {exercise.mode === 'duration' && <div>SEGUNDOS</div>}
-                <div>HECHO</div>
-                <div></div>
               </div>
 
-              {/* Set Rows */}
-              {(exercise.sets || []).map((s, setIdx) => (
-                <div
-                  key={setIdx}
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns:
-                      exercise.mode === 'weight_reps' ? '44px 1fr 1fr 64px 36px' : '44px 2fr 64px 36px',
-                    alignItems: 'center',
-                    padding: '8px 4px',
-                    background: s.completed
-                      ? 'rgba(16, 185, 129, 0.12)'
-                      : setIdx % 2 === 0
-                      ? '#161b24'
-                      : '#131720',
-                    borderRadius: '10px',
-                    marginBottom: '6px',
-                    border: s.completed ? '1.5px solid rgba(16, 185, 129, 0.4)' : '1px solid #232c3d',
-                    transition: 'all 0.2s ease',
-                  }}
-                >
-                  {/* Set Number */}
-                  <div style={{ textAlign: 'center' }}>
-                    <span
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: '26px',
-                        height: '26px',
-                        borderRadius: '6px',
-                        background: s.completed ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255, 255, 255, 0.06)',
-                        color: s.completed ? '#10b981' : '#94a3b8',
-                        fontWeight: 800,
-                        fontSize: '0.82rem',
-                        fontVariantNumeric: 'tabular-nums',
-                      }}
-                    >
-                      #{s.setNumber}
-                    </span>
-                  </div>
+              {/* Set Rows with Swipe Right to Delete (IonItemSliding) */}
+              <IonList style={{ background: 'transparent', padding: 0 }}>
+                {(exercise.sets || []).map((s, setIdx) => {
+                  const setKey = `${exIdx}-${setIdx}`;
+                  const isSingleEdit = !!singleEditSets[setKey];
+                  const prevSetHistory =
+                    previousExerciseHistory[exercise.exerciseId]?.sets?.find(
+                      (hs) => hs.setNumber === s.setNumber
+                    ) || previousExerciseHistory[exercise.exerciseId]?.sets?.[setIdx];
 
-                  {/* Mode-specific Inputs without conversion text underneath */}
-                  {exercise.mode === 'weight_reps' && (
-                    <>
-                      <div style={{ padding: '0 4px' }}>
-                        <IonInput
-                          type="number"
-                          step={getWeightUnit(exIdx) === 'lb' ? '1' : '0.5'}
-                          value={
-                            s.actualWeightKg !== undefined && s.actualWeightKg !== null
-                              ? getWeightUnit(exIdx) === 'lb'
-                                ? Number((s.actualWeightKg * 2.20462262).toFixed(1))
-                                : s.actualWeightKg
-                              : ''
-                          }
-                          placeholder="0"
-                          style={{
-                            textAlign: 'center',
-                            background: s.completed ? 'rgba(16, 185, 129, 0.08)' : '#10141c',
-                            borderRadius: '8px',
-                            border: s.completed ? '1px solid rgba(16, 185, 129, 0.3)' : '1.5px solid #334155',
-                            fontWeight: 800,
-                            fontSize: '0.95rem',
-                            color: s.completed ? '#10b981' : '#ffffff',
-                            height: '38px',
-                          }}
-                          onIonInput={(e) => {
-                            const val = parseFloat(e.detail.value || '0');
-                            const kg = getWeightUnit(exIdx) === 'lb' ? Number((val * 0.45359237).toFixed(1)) : val;
-                            updateSetValues(exIdx, setIdx, {
-                              actualWeightKg: isNaN(kg) ? 0 : kg,
-                            });
-                          }}
-                        />
-                      </div>
-                      <div style={{ padding: '0 4px' }}>
-                        <IonInput
-                          type="number"
-                          value={s.actualReps ?? ''}
-                          placeholder="0"
-                          style={{
-                            textAlign: 'center',
-                            background: s.completed ? 'rgba(16, 185, 129, 0.08)' : '#10141c',
-                            borderRadius: '8px',
-                            border: s.completed ? '1px solid rgba(16, 185, 129, 0.3)' : '1.5px solid #334155',
-                            fontWeight: 800,
-                            fontSize: '0.95rem',
-                            color: s.completed ? '#10b981' : '#ffffff',
-                            height: '38px',
-                          }}
-                          onIonInput={(e) =>
-                            updateSetValues(exIdx, setIdx, {
-                              actualReps: parseInt(e.detail.value || '0', 10),
-                            })
-                          }
-                        />
-                      </div>
-                    </>
-                  )}
-
-                  {exercise.mode === 'reps_only' && (
-                    <div style={{ padding: '0 6px' }}>
-                      <IonInput
-                        type="number"
-                        value={s.actualReps ?? ''}
-                        placeholder="10"
-                        style={{
-                          textAlign: 'center',
-                          background: s.completed ? 'rgba(16, 185, 129, 0.08)' : '#10141c',
-                          borderRadius: '8px',
-                          border: s.completed ? '1px solid rgba(16, 185, 129, 0.3)' : '1.5px solid #334155',
-                          fontWeight: 800,
-                          fontSize: '0.95rem',
-                          color: s.completed ? '#10b981' : '#ffffff',
-                          height: '38px',
-                        }}
-                        onIonInput={(e) =>
-                          updateSetValues(exIdx, setIdx, {
-                            actualReps: parseInt(e.detail.value || '0', 10),
-                          })
-                        }
-                      />
-                    </div>
-                  )}
-
-                  {exercise.mode === 'duration' && (
-                    <div style={{ padding: '0 6px' }}>
-                      <IonInput
-                        type="number"
-                        value={s.actualDurationSeconds ?? ''}
-                        placeholder="30"
-                        style={{
-                          textAlign: 'center',
-                          background: s.completed ? 'rgba(16, 185, 129, 0.08)' : '#10141c',
-                          borderRadius: '8px',
-                          border: s.completed ? '1px solid rgba(16, 185, 129, 0.3)' : '1.5px solid #334155',
-                          fontWeight: 800,
-                          fontSize: '0.95rem',
-                          color: s.completed ? '#10b981' : '#ffffff',
-                          height: '38px',
-                        }}
-                        onIonInput={(e) =>
-                          updateSetValues(exIdx, setIdx, {
-                            actualDurationSeconds: parseInt(e.detail.value || '0', 10),
-                          })
-                        }
-                      />
-                    </div>
-                  )}
-
-                  {/* Button to toggle set completion */}
-                  <div style={{ display: 'flex', justifyContent: 'center' }}>
-                    <button
-                      type="button"
-                      onClick={() => handleToggleSet(exIdx, setIdx)}
-                      style={{
-                        width: '46px',
-                        height: '36px',
-                        borderRadius: '8px',
-                        border: s.completed ? 'none' : '1.5px solid #3b82f6',
-                        background: s.completed ? '#10b981' : 'transparent',
-                        color: s.completed ? '#ffffff' : '#3b82f6',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                        transition: 'all 0.15s ease',
-                      }}
-                      title={s.completed ? 'Serie completada' : 'Marcar serie como hecha'}
-                    >
-                      <IonIcon
-                        icon={s.completed ? checkmarkCircle : checkmarkCircleOutline}
-                        style={{ fontSize: '1.4rem' }}
-                      />
-                    </button>
-                  </div>
-
-                  {/* Delete individual set button */}
-                  <div style={{ display: 'flex', justifyContent: 'center' }}>
-                    <button
-                      type="button"
-                      disabled={(exercise.sets || []).length <= 1}
-                      onClick={() => removeSetFromActiveWorkout(exIdx, setIdx)}
+                  return (
+                    <IonItemSliding
+                      key={setIdx}
                       style={{
                         background: 'transparent',
-                        border: 'none',
-                        color: exercise.sets.length <= 1 ? '#475569' : '#ef4444',
-                        cursor: exercise.sets.length <= 1 ? 'not-allowed' : 'pointer',
-                        padding: '4px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
+                        marginBottom: '6px',
+                        borderRadius: '12px',
+                        overflow: 'hidden',
                       }}
-                      title={
-                        (exercise.sets || []).length <= 1
-                          ? 'Debe haber al menos 1 serie'
-                          : `Eliminar serie #${s.setNumber}`
-                      }
                     >
-                      <IonIcon icon={trashOutline} style={{ fontSize: '16px' }} />
-                    </button>
-                  </div>
-                </div>
-              ))}
+                      {/* Swipe to the right reveals delete button */}
+                      <IonItemOptions side="start">
+                        <IonItemOption
+                          color="danger"
+                          disabled={(exercise.sets || []).length <= 1}
+                          onClick={() => {
+                            removeSetFromActiveWorkout(exIdx, setIdx);
+                            setToastMessage(`Serie #${s.setNumber} eliminada`);
+                          }}
+                          style={{
+                            fontWeight: 800,
+                            padding: '0 16px',
+                            borderRadius: '12px 0 0 12px',
+                          }}
+                        >
+                          <IonIcon slot="icon-only" icon={trashOutline} />
+                        </IonItemOption>
+                      </IonItemOptions>
+
+                      <IonItem
+                        lines="none"
+                        style={{
+                          '--background': s.completed
+                            ? 'rgba(16, 185, 129, 0.12)'
+                            : setIdx % 2 === 0
+                            ? '#161b24'
+                            : '#131720',
+                          '--padding-start': '4px',
+                          '--inner-padding-end': '4px',
+                          '--min-height': 'auto',
+                          border: s.completed
+                            ? '1.5px solid rgba(16, 185, 129, 0.4)'
+                            : isSingleEdit
+                            ? '1.5px solid rgba(59, 130, 246, 0.5)'
+                            : '1px solid #232c3d',
+                          borderRadius: '12px',
+                          width: '100%',
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: 'grid',
+                            gridTemplateColumns:
+                              exercise.mode === 'weight_reps'
+                                ? '52px 38px 1fr 1fr'
+                                : '52px 38px 2fr',
+                            alignItems: 'center',
+                            width: '100%',
+                            padding: '6px 2px',
+                          }}
+                        >
+                          {/* 1. Listo Button on the LEFT */}
+                          <div style={{ display: 'flex', justifyContent: 'center' }}>
+                            <button
+                              type="button"
+                              onClick={() => handleToggleSet(exIdx, setIdx)}
+                              style={{
+                                width: '42px',
+                                height: '36px',
+                                borderRadius: '8px',
+                                border: s.completed ? 'none' : '1.5px solid #3b82f6',
+                                background: s.completed ? '#10b981' : 'transparent',
+                                color: s.completed ? '#ffffff' : '#3b82f6',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease',
+                              }}
+                              title={s.completed ? 'Serie completada' : 'Marcar serie como hecha'}
+                            >
+                              <IonIcon
+                                icon={s.completed ? checkmarkCircle : checkmarkCircleOutline}
+                                style={{ fontSize: '1.35rem' }}
+                              />
+                            </button>
+                          </div>
+
+                          {/* 2. Set Number */}
+                          <div style={{ textAlign: 'center' }}>
+                            <span
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: '26px',
+                                height: '26px',
+                                borderRadius: '6px',
+                                background: s.completed
+                                  ? 'rgba(16, 185, 129, 0.2)'
+                                  : 'rgba(255, 255, 255, 0.06)',
+                                color: s.completed ? '#10b981' : '#94a3b8',
+                                fontWeight: 800,
+                                fontSize: '0.8rem',
+                                fontVariantNumeric: 'tabular-nums',
+                              }}
+                            >
+                              #{s.setNumber}
+                            </span>
+                          </div>
+
+                          {/* 3. Mode-specific Inputs with Downward Propagation & History Badges */}
+                          {exercise.mode === 'weight_reps' && (
+                            <>
+                              <div style={{ padding: '0 4px' }}>
+                                <IonInput
+                                  type="number"
+                                  step={getWeightUnit(exIdx) === 'lb' ? '1' : '0.5'}
+                                  value={
+                                    s.actualWeightKg !== undefined && s.actualWeightKg !== null
+                                      ? getWeightUnit(exIdx) === 'lb'
+                                        ? Number((s.actualWeightKg * 2.20462262).toFixed(1))
+                                        : s.actualWeightKg
+                                      : ''
+                                  }
+                                  placeholder="0"
+                                  onFocus={() => {
+                                    setSelectedWeightTarget({
+                                      exIdx,
+                                      setIdx,
+                                      exerciseName: exercise.exerciseName,
+                                      setNumber: s.setNumber,
+                                      currentKg: s.actualWeightKg || 0,
+                                    });
+                                  }}
+                                  style={{
+                                    textAlign: 'center',
+                                    background: s.completed ? 'rgba(16, 185, 129, 0.08)' : '#10141c',
+                                    borderRadius: '8px',
+                                    border: s.completed
+                                      ? '1px solid rgba(16, 185, 129, 0.3)'
+                                      : '1.5px solid #334155',
+                                    fontWeight: 800,
+                                    fontSize: '0.95rem',
+                                    color: s.completed ? '#10b981' : '#ffffff',
+                                    height: '38px',
+                                  }}
+                                  onIonInput={(e) => {
+                                    const val = parseFloat(e.detail.value || '0');
+                                    const kg =
+                                      getWeightUnit(exIdx) === 'lb'
+                                        ? Number((val * 0.45359237).toFixed(1))
+                                        : val;
+                                    handleUpdateSetValue(exIdx, setIdx, {
+                                      actualWeightKg: isNaN(kg) ? 0 : kg,
+                                    });
+                                  }}
+                                />
+
+                                {/* History pill: previous session weight/reps */}
+                                {prevSetHistory?.weightKg !== undefined && (
+                                  <div
+                                    onClick={() => {
+                                      // Click history to set ONLY this series without cascading below
+                                      handleUpdateSetValue(
+                                        exIdx,
+                                        setIdx,
+                                        {
+                                          actualWeightKg: prevSetHistory.weightKg,
+                                          actualReps: prevSetHistory.reps ?? s.actualReps,
+                                        },
+                                        true
+                                      );
+                                      setToastMessage(
+                                        `Serie #${s.setNumber}: cargado peso previo (${prevSetHistory.weightKg} kg)`
+                                      );
+                                    }}
+                                    style={{
+                                      fontSize: '0.68rem',
+                                      color: '#94a3b8',
+                                      marginTop: '3px',
+                                      textAlign: 'center',
+                                      cursor: 'pointer',
+                                      userSelect: 'none',
+                                    }}
+                                    title="Toca para usar este peso anterior solo en esta serie"
+                                  >
+                                    <span style={{ color: '#64748b' }}>Ant: </span>
+                                    <span style={{ fontWeight: 800, color: '#38bdf8' }}>
+                                      {getWeightUnit(exIdx) === 'lb'
+                                        ? Number(((prevSetHistory.weightKg || 0) * 2.20462).toFixed(1))
+                                        : prevSetHistory.weightKg}
+                                      {getWeightUnit(exIdx)}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+
+                              <div style={{ padding: '0 4px' }}>
+                                <IonInput
+                                  type="number"
+                                  value={s.actualReps ?? ''}
+                                  placeholder="0"
+                                  style={{
+                                    textAlign: 'center',
+                                    background: s.completed ? 'rgba(16, 185, 129, 0.08)' : '#10141c',
+                                    borderRadius: '8px',
+                                    border: s.completed
+                                      ? '1px solid rgba(16, 185, 129, 0.3)'
+                                      : '1.5px solid #334155',
+                                    fontWeight: 800,
+                                    fontSize: '0.95rem',
+                                    color: s.completed ? '#10b981' : '#ffffff',
+                                    height: '38px',
+                                  }}
+                                  onIonInput={(e) =>
+                                    handleUpdateSetValue(exIdx, setIdx, {
+                                      actualReps: parseInt(e.detail.value || '0', 10),
+                                    })
+                                  }
+                                />
+
+                                {/* History pill / Single edit indicator */}
+                                <div
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '4px',
+                                    marginTop: '3px',
+                                  }}
+                                >
+                                  {prevSetHistory?.reps !== undefined && (
+                                    <span
+                                      onClick={() => {
+                                        handleUpdateSetValue(
+                                          exIdx,
+                                          setIdx,
+                                          { actualReps: prevSetHistory.reps },
+                                          true
+                                        );
+                                      }}
+                                      style={{
+                                        fontSize: '0.68rem',
+                                        color: '#38bdf8',
+                                        fontWeight: 800,
+                                        cursor: 'pointer',
+                                      }}
+                                      title="Toca para usar reps anteriores solo en esta serie"
+                                    >
+                                      {prevSetHistory.reps} reps
+                                    </span>
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleSingleEditSet(exIdx, setIdx)}
+                                    style={{
+                                      background: isSingleEdit ? 'rgba(59, 130, 246, 0.25)' : 'transparent',
+                                      border: isSingleEdit ? '1px solid #3b82f6' : 'none',
+                                      borderRadius: '4px',
+                                      color: isSingleEdit ? '#60a5fa' : '#64748b',
+                                      fontSize: '0.64rem',
+                                      fontWeight: 800,
+                                      padding: '1px 3px',
+                                      cursor: 'pointer',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '2px',
+                                    }}
+                                    title={
+                                      isSingleEdit
+                                        ? 'Modo: Edita sólo esta serie (no cambia las series inferiores)'
+                                        : 'Toca para editar solo esta serie (sin cambiar las de abajo)'
+                                    }
+                                  >
+                                    <IonIcon icon={createOutline} style={{ fontSize: '9px' }} />
+                                    <span>{isSingleEdit ? 'Solo esta' : '1x'}</span>
+                                  </button>
+                                </div>
+                              </div>
+                            </>
+                          )}
+
+                          {exercise.mode === 'reps_only' && (
+                            <div style={{ padding: '0 6px' }}>
+                              <IonInput
+                                type="number"
+                                value={s.actualReps ?? ''}
+                                placeholder="10"
+                                style={{
+                                  textAlign: 'center',
+                                  background: s.completed ? 'rgba(16, 185, 129, 0.08)' : '#10141c',
+                                  borderRadius: '8px',
+                                  border: s.completed
+                                    ? '1px solid rgba(16, 185, 129, 0.3)'
+                                    : '1.5px solid #334155',
+                                  fontWeight: 800,
+                                  fontSize: '0.95rem',
+                                  color: s.completed ? '#10b981' : '#ffffff',
+                                  height: '38px',
+                                }}
+                                onIonInput={(e) =>
+                                  handleUpdateSetValue(exIdx, setIdx, {
+                                    actualReps: parseInt(e.detail.value || '0', 10),
+                                  })
+                                }
+                              />
+                            </div>
+                          )}
+
+                          {exercise.mode === 'duration' && (
+                            <div style={{ padding: '0 6px' }}>
+                              <IonInput
+                                type="number"
+                                value={s.actualDurationSeconds ?? ''}
+                                placeholder="30"
+                                style={{
+                                  textAlign: 'center',
+                                  background: s.completed ? 'rgba(16, 185, 129, 0.08)' : '#10141c',
+                                  borderRadius: '8px',
+                                  border: s.completed
+                                    ? '1px solid rgba(16, 185, 129, 0.3)'
+                                    : '1.5px solid #334155',
+                                  fontWeight: 800,
+                                  fontSize: '0.95rem',
+                                  color: s.completed ? '#10b981' : '#ffffff',
+                                  height: '38px',
+                                }}
+                                onIonInput={(e) =>
+                                  handleUpdateSetValue(exIdx, setIdx, {
+                                    actualDurationSeconds: parseInt(e.detail.value || '0', 10),
+                                  })
+                                }
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </IonItem>
+                    </IonItemSliding>
+                  );
+                })}
+              </IonList>
+
+              {/* Swipe Right to delete helper note */}
+              <div
+                style={{
+                  textAlign: 'right',
+                  fontSize: '0.7rem',
+                  color: '#64748b',
+                  margin: '2px 6px 6px',
+                }}
+              >
+                <span>👉 Desliza a la derecha para eliminar serie</span>
+              </div>
 
               {/* Set Actions: Add Set button (Quitar última removed as requested) */}
               <div
@@ -1699,6 +1975,23 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
       <WeightConverterModal
         isOpen={showConverterModal}
         onClose={() => setShowConverterModal(false)}
+        initialKg={selectedWeightTarget ? selectedWeightTarget.currentKg : undefined}
+        targetInputDescription={
+          selectedWeightTarget
+            ? `${selectedWeightTarget.exerciseName} - Serie #${selectedWeightTarget.setNumber}`
+            : undefined
+        }
+        onApplyKg={
+          selectedWeightTarget
+            ? (kg) => {
+                const target = selectedWeightTarget;
+                handleUpdateSetValue(target.exIdx, target.setIdx, { actualWeightKg: kg });
+                setToastMessage(
+                  `Peso ${kg} kg aplicado a Serie #${target.setNumber} (${target.exerciseName})`
+                );
+              }
+            : undefined
+        }
       />
 
       {/* Rest Countdown Modal */}
@@ -1750,10 +2043,10 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
           </div>
 
           {/* Countdown display */}
-          <div style={{ margin: '18px 0' }}>
+          <div style={{ margin: '14px 0 10px' }}>
             <div
               style={{
-                fontSize: '3.8rem',
+                fontSize: '3.6rem',
                 fontWeight: 900,
                 color: '#eab308',
                 fontVariantNumeric: 'tabular-nums',
@@ -1762,12 +2055,86 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
               }}
             >
               {restSecondsLeft}
-              <span style={{ fontSize: '1.8rem', fontWeight: 700, marginLeft: '4px' }}>s</span>
+              <span style={{ fontSize: '1.6rem', fontWeight: 700, marginLeft: '4px' }}>s</span>
             </div>
-            <p style={{ margin: '8px 0 0', color: '#94a3b8', fontSize: '0.84rem' }}>
+            <p style={{ margin: '6px 0 0', color: '#94a3b8', fontSize: '0.82rem' }}>
               Recupérate para la próxima serie
             </p>
           </div>
+
+          {/* Requirement 4: Next exercise and set preview */}
+          {nextPendingSet && (
+            <div
+              style={{
+                background: '#0d1117',
+                border: '1.5px solid #233148',
+                borderRadius: '16px',
+                padding: '12px 14px',
+                margin: '12px 0 16px',
+                textAlign: 'left',
+              }}
+            >
+              <div
+                style={{
+                  fontSize: '0.7rem',
+                  fontWeight: 800,
+                  color: '#38bdf8',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                  marginBottom: '6px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+              >
+                <span>👉 Siguiente serie:</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                {nextPendingSet.gifUrl && (
+                  <ExerciseGif
+                    gifUrl={nextPendingSet.gifUrl}
+                    exerciseName={nextPendingSet.exerciseName}
+                    size="small"
+                  />
+                )}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div
+                    style={{
+                      fontWeight: 800,
+                      fontSize: '0.94rem',
+                      color: '#ffffff',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}
+                  >
+                    {nextPendingSet.exerciseName}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: '0.82rem',
+                      color: '#94a3b8',
+                      fontWeight: 700,
+                      marginTop: '2px',
+                    }}
+                  >
+                    Serie #{nextPendingSet.setNumber} •{' '}
+                    {nextPendingSet.mode === 'weight_reps'
+                      ? `${
+                          getWeightUnit(nextPendingSet.exerciseIndex) === 'lb'
+                            ? Number(((nextPendingSet.weightKg || 0) * 2.20462).toFixed(1))
+                            : nextPendingSet.weightKg || 0
+                        } ${getWeightUnit(nextPendingSet.exerciseIndex)} × ${
+                          nextPendingSet.reps || 0
+                        } reps`
+                      : nextPendingSet.mode === 'duration'
+                      ? `${nextPendingSet.durationSeconds || 0}s`
+                      : `${nextPendingSet.reps || 0} reps`}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* -5s and +5s adjustment buttons */}
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginBottom: '16px' }}>

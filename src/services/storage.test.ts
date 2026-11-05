@@ -368,4 +368,60 @@ describe('Storage and Fitness Calculations', () => {
       expect(entries[0].date).toBe('2026-11-04');
     });
   });
+
+  describe('User Profile and Routine per-set configuration', () => {
+    it('saves and retrieves user profile with preferred weight unit (lb and kg)', () => {
+      const profile: UserProfile = {
+        name: 'Carlos Fit',
+        birthDate: '1995-05-15',
+        gender: 'male',
+        height: 180,
+        initialWeight: 80,
+        targetWeight: 75,
+        preferredWeightUnit: 'lb',
+        weekStartDay: 1,
+        createdAt: '2026-11-04T12:00:00Z',
+        updatedAt: '2026-11-04T12:00:00Z',
+      };
+
+      StorageService.saveUserProfile(profile);
+      const retrieved = StorageService.getUserProfile();
+      expect(retrieved?.preferredWeightUnit).toBe('lb');
+      expect(retrieved?.name).toBe('Carlos Fit');
+    });
+
+    it('saves and retrieves routine with per-set targets (setsConfig)', () => {
+      const routine: Routine = {
+        id: 'routine-custom-sets',
+        name: 'Fuerza Progresiva',
+        description: 'Rutina con series personalizadas',
+        exercises: [
+          {
+            id: 'cfg-bench',
+            exerciseId: 'ex-bench-press',
+            exerciseName: 'Press de Banca',
+            mode: 'weight_reps',
+            targetSets: 3,
+            targetWeightKg: 60,
+            targetReps: 10,
+            setsConfig: [
+              { setNumber: 1, targetWeightKg: 50, targetReps: 12 },
+              { setNumber: 2, targetWeightKg: 60, targetReps: 10 },
+              { setNumber: 3, targetWeightKg: 70, targetReps: 8 },
+            ],
+          },
+        ],
+        createdAt: '2026-11-04T12:00:00Z',
+        updatedAt: '2026-11-04T12:00:00Z',
+      };
+
+      StorageService.saveRoutine(routine);
+      const routines = StorageService.getRoutines();
+      const saved = routines.find((r) => r.id === 'routine-custom-sets');
+      expect(saved).toBeDefined();
+      expect(saved?.exercises[0].setsConfig).toHaveLength(3);
+      expect(saved?.exercises[0].setsConfig?.[0].targetWeightKg).toBe(50);
+      expect(saved?.exercises[0].setsConfig?.[2].targetWeightKg).toBe(70);
+    });
+  });
 });

@@ -39,11 +39,15 @@ import {
   chevronUpOutline,
   swapVerticalOutline,
   checkmarkOutline,
+  addOutline,
+  createOutline,
+  scaleOutline,
 } from 'ionicons/icons';
 import { useApp } from '../context/AppContext';
 import {
   Routine,
   RoutineExerciseConfig,
+  RoutineSetTarget,
   ExerciseMeasurementMode,
   ExerciseDefinition,
 } from '../types';
@@ -64,12 +68,33 @@ export const RoutineFormModal: React.FC<RoutineFormModalProps> = ({
   onClose,
   onSaved,
 }) => {
-  const { exercises, saveRoutine } = useApp();
+  const { profile, exercises, saveRoutine } = useApp();
+
+  const defaultUnit = profile?.preferredWeightUnit || 'kg';
 
   const [routineName, setRoutineName] = useState('');
   const [description, setDescription] = useState('');
   const [routineExercises, setRoutineExercises] = useState<RoutineExerciseConfig[]>([]);
   const [errorMessage, setErrorMessage] = useState('');
+
+  // Selected weight input target for the unit converter
+  const [selectedWeightTarget, setSelectedWeightTarget] = useState<{
+    exerciseId: string;
+    exerciseName: string;
+    setNumber: number;
+    currentKg: number;
+  } | null>(null);
+
+  // Single edit sets tracking in routine editor
+  const [singleEditSets, setSingleEditSets] = useState<Record<string, boolean>>({});
+
+  const toggleSingleEditSet = (exId: string, setIdx: number) => {
+    const key = `${exId}-${setIdx}`;
+    setSingleEditSets((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  };
 
   // New exercise state to add to routine
   const [showAddExerciseForm, setShowAddExerciseForm] = useState(false);
@@ -83,17 +108,123 @@ export const RoutineFormModal: React.FC<RoutineFormModalProps> = ({
   const [targetSets, setTargetSets] = useState<string>('3');
   const [targetReps, setTargetReps] = useState<string>('10');
   const [targetWeightKg, setTargetWeightKg] = useState<string>('20');
-  const [addWeightUnit, setAddWeightUnit] = useState<'kg' | 'lb'>('kg');
+  const [addWeightUnit, setAddWeightUnit] = useState<'kg' | 'lb'>(defaultUnit);
   const [cardWeightUnits, setCardWeightUnits] = useState<Record<string, 'kg' | 'lb'>>({});
   const [targetDurationSeconds, setTargetDurationSeconds] = useState<string>('45');
   const [restSeconds, setRestSeconds] = useState<string>('60');
 
-  const getCardUnit = (id: string): 'kg' | 'lb' => cardWeightUnits[id] || 'kg';
+  const getCardUnit = (id: string): 'kg' | 'lb' => cardWeightUnits[id] || defaultUnit;
   const toggleCardUnit = (id: string) => {
     setCardWeightUnits((prev) => ({
       ...prev,
-      [id]: prev[id] === 'lb' ? 'kg' : 'lb',
+      [id]: (prev[id] || defaultUnit) === 'lb' ? 'kg' : 'lb',
     }));
+  };
+
+  const ensureSetsConfig = (item: RoutineExerciseConfig): RoutineSetTarget[] => {
+    if (item.setsConfig && item.setsConfig.length > 0) {
+      return item.setsConfig;
+    }
+    const count = item.targetSets && item.targetSets > 0 ? item.targetSets : 3;
+    const list: RoutineSetTarget[] = [];
+    for (let i = 1; i <= count; i++) {
+      list.push({
+        setNumber: i,
+        targetReps: item.mode !== 'duration' ? (item.targetReps ?? 10) : undefined,
+        targetWeightKg: item.mode === 'weight_reps' ? (item.targetWeightKg ?? 20) : undefined,
+        targetDurationSeconds:
+          item.mode === 'duration' ? (item.targetDurationSeconds ?? 30) : undefined,
+      });
+    }
+    return list;
+  };
+
+  const handleUpdateSetInRoutineExercise = (
+    exerciseConfigId: string,
+    setIndex: number,
+    values: Partial<RoutineSetTarget>,
+    singleSetOnly: boolean = false
+  ) => {
+    setRoutineExercises((prev) =>
+      prev.map((ex) => {
+        if (ex.id !== exerciseConfigId) return ex;
+        const currentSets = [...ensureSetsConfig(ex)];
+        const isSingle = singleSetOnly || !!singleEditSets[`${exerciseConfigId}-${setIndex}`];
+
+        currentSets[setIndex] = {
+          ...currentSets[setIndex],
+          ...values,
+        };
+
+        // If not single edit mode, cascade to all subsequent sets (Requirement 1)
+        if (!isSingle) {
+          for (let i = setIndex + 1; i < currentSets.length; i++) {
+            currentSets[i] = {
+              ...currentSets[i],
+              ...values,
+            };
+          }
+        }
+
+        const firstSet = currentSets[0];
+        return {
+          ...ex,
+          targetSets: currentSets.length,
+          targetWeightKg: firstSet?.targetWeightKg ?? ex.targetWeightKg,
+          targetReps: firstSet?.targetReps ?? ex.targetReps,
+          targetDurationSeconds: firstSet?.targetDurationSeconds ?? ex.targetDurationSeconds,
+          setsConfig: currentSets,
+        };
+      })
+    );
+  };
+
+  const handleAddSetToRoutineExercise = (exerciseConfigId: string) => {
+    setRoutineExercises((prev) =>
+      prev.map((ex) => {
+        if (ex.id !== exerciseConfigId) return ex;
+        const currentSets = [...ensureSetsConfig(ex)];
+        const lastSet = currentSets[currentSets.length - 1];
+        const newSetNumber = currentSets.length + 1;
+        const newSet: RoutineSetTarget = {
+          setNumber: newSetNumber,
+          targetReps: lastSet?.targetReps ?? ex.targetReps ?? 10,
+          targetWeightKg: lastSet?.targetWeightKg ?? ex.targetWeightKg ?? 20,
+          targetDurationSeconds:
+            lastSet?.targetDurationSeconds ?? ex.targetDurationSeconds ?? 30,
+        };
+        const updated = [...currentSets, newSet];
+        return {
+          ...ex,
+          targetSets: updated.length,
+          setsConfig: updated,
+        };
+      })
+    );
+  };
+
+  const handleRemoveSetFromRoutineExercise = (exerciseConfigId: string, setIndex: number) => {
+    setRoutineExercises((prev) =>
+      prev.map((ex) => {
+        if (ex.id !== exerciseConfigId) return ex;
+        const currentSets = [...ensureSetsConfig(ex)];
+        if (currentSets.length <= 1) return ex;
+        currentSets.splice(setIndex, 1);
+        const renumbered = currentSets.map((s, idx) => ({ ...s, setNumber: idx + 1 }));
+        return {
+          ...ex,
+          targetSets: renumbered.length,
+          setsConfig: renumbered,
+        };
+      })
+    );
+  };
+
+  const handleApplyWeightFromConverter = (exerciseId: string, setNumber: number, kg: number) => {
+    const ex = routineExercises.find((e) => e.id === exerciseId);
+    if (!ex) return;
+    const setIdx = setNumber - 1;
+    handleUpdateSetInRoutineExercise(exerciseId, setIdx, { targetWeightKg: kg });
   };
 
   useEffect(() => {
@@ -242,6 +373,16 @@ export const RoutineFormModal: React.FC<RoutineFormModalProps> = ({
     const durationNum = parseInt(targetDurationSeconds, 10) || 45;
     const restNum = parseInt(restSeconds, 10) || 60;
 
+    const setsConfig: RoutineSetTarget[] = [];
+    for (let i = 1; i <= setsNum; i++) {
+      setsConfig.push({
+        setNumber: i,
+        targetReps: mode !== 'duration' ? repsNum : undefined,
+        targetWeightKg: mode === 'weight_reps' ? weightNum : undefined,
+        targetDurationSeconds: mode === 'duration' ? durationNum : undefined,
+      });
+    }
+
     const newExerciseConfig: RoutineExerciseConfig = {
       id: 'cfg-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
       exerciseId: selectedExerciseId || 'custom-' + Date.now(),
@@ -253,6 +394,7 @@ export const RoutineFormModal: React.FC<RoutineFormModalProps> = ({
       targetDurationSeconds: mode === 'duration' ? durationNum : undefined,
       restSeconds: restNum,
       gifUrl: selectedExerciseDef?.gifUrl || customGifUrl.trim() || undefined,
+      setsConfig,
     };
 
     setRoutineExercises([...routineExercises, newExerciseConfig]);
@@ -279,11 +421,24 @@ export const RoutineFormModal: React.FC<RoutineFormModalProps> = ({
       return;
     }
 
+    const processedExercises = routineExercises.map((e) => {
+      const sets = ensureSetsConfig(e);
+      const first = sets[0];
+      return {
+        ...e,
+        targetSets: sets.length,
+        targetWeightKg: first?.targetWeightKg ?? e.targetWeightKg,
+        targetReps: first?.targetReps ?? e.targetReps,
+        targetDurationSeconds: first?.targetDurationSeconds ?? e.targetDurationSeconds,
+        setsConfig: sets,
+      };
+    });
+
     const saved: Routine = {
       id: routineToEdit ? routineToEdit.id : 'routine-' + Date.now(),
       name: routineName.trim(),
       description: description.trim(),
-      exercises: routineExercises,
+      exercises: processedExercises,
       createdAt: routineToEdit ? routineToEdit.createdAt : new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -588,167 +743,325 @@ export const RoutineFormModal: React.FC<RoutineFormModalProps> = ({
                 </IonButton>
               </div>
 
-              {/* Accordion Body - In-place configuration */}
+              {/* Accordion Body - Interactive Series Table */}
               {isCardExpanded && (
                 <IonCardContent
                   style={{
-                    padding: '10px 14px 14px',
+                    padding: '10px 12px 14px',
                     borderTop: '1px solid var(--ion-color-step-100, #27272a)',
                     background: 'var(--ion-color-step-50, rgba(255,255,255,0.01))',
                   }}
                 >
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '10px' }}>
-                    <div>
-                      <IonLabel style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--ion-color-medium)', display: 'block', marginBottom: '4px' }}>
-                        Series
-                      </IonLabel>
-                      <IonInput
-                        type="number"
-                        value={item.targetSets}
-                        style={{
-                          background: 'var(--ion-background-color, #121215)',
-                          borderRadius: '8px',
-                          border: '1px solid var(--ion-color-step-150, #27272a)',
-                          textAlign: 'center',
-                          fontWeight: 700,
-                        }}
-                        onIonInput={(e) => updateRoutineExercise(item.id, { targetSets: parseInt(e.detail.value || '1', 10) || 1 })}
-                      />
-                    </div>
-
+                  {/* Table Header */}
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns:
+                        item.mode === 'weight_reps' ? '44px 1fr 1fr 50px' : '44px 2fr 50px',
+                      padding: '6px 4px',
+                      fontWeight: 700,
+                      fontSize: '0.74rem',
+                      color: '#94a3b8',
+                      textAlign: 'center',
+                      letterSpacing: '0.04em',
+                    }}
+                  >
+                    <div>SET</div>
                     {item.mode === 'weight_reps' && (
                       <>
-                        <div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                            <IonLabel style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--ion-color-medium)' }}>
-                              Peso ({getCardUnit(item.id).toUpperCase()})
-                            </IonLabel>
-                            <button
-                              type="button"
-                              onClick={() => toggleCardUnit(item.id)}
-                              style={{
-                                background: getCardUnit(item.id) === 'lb' ? 'var(--ion-color-primary)' : 'var(--ion-color-step-100, #27272a)',
-                                color: getCardUnit(item.id) === 'lb' ? '#ffffff' : 'var(--ion-color-primary)',
-                                border: '1px solid var(--ion-color-step-150, #3f3f46)',
-                                borderRadius: '6px',
-                                padding: '1px 5px',
-                                fontSize: '0.68rem',
-                                fontWeight: 800,
-                                cursor: 'pointer',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '2px',
-                              }}
-                              title="Alternar entre KG y LB"
-                            >
-                              <span>{getCardUnit(item.id).toUpperCase()}</span>
-                              <IonIcon icon={swapHorizontalOutline} style={{ fontSize: '10px' }} />
-                            </button>
-                          </div>
-                          <IonInput
-                            type="number"
-                            step={getCardUnit(item.id) === 'lb' ? '1' : '0.5'}
-                            value={
-                              getCardUnit(item.id) === 'lb'
-                                ? Number(((item.targetWeightKg ?? 20) * 2.20462262).toFixed(1))
-                                : (item.targetWeightKg ?? 20)
-                            }
+                        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '4px' }}>
+                          <span>PESO</span>
+                          <button
+                            type="button"
+                            onClick={() => toggleCardUnit(item.id)}
                             style={{
-                              background: 'var(--ion-background-color, #121215)',
-                              borderRadius: '8px',
-                              border: '1px solid var(--ion-color-step-150, #27272a)',
-                              textAlign: 'center',
-                              fontWeight: 700,
+                              background: getCardUnit(item.id) === 'lb' ? '#2563eb' : '#232c3d',
+                              color: getCardUnit(item.id) === 'lb' ? '#ffffff' : '#60a5fa',
+                              border: '1px solid #3b82f6',
+                              borderRadius: '6px',
+                              padding: '1px 5px',
+                              fontSize: '0.68rem',
+                              fontWeight: 800,
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '2px',
                             }}
-                            onIonInput={(e) => {
-                              const val = parseFloat(e.detail.value || '0') || 0;
-                              const kg = getCardUnit(item.id) === 'lb' ? Number((val * 0.45359237).toFixed(1)) : val;
-                              updateRoutineExercise(item.id, { targetWeightKg: kg });
-                            }}
-                          />
-                          <div style={{ fontSize: '0.66rem', color: getCardUnit(item.id) === 'lb' ? 'var(--ion-color-primary)' : 'var(--ion-color-medium)', fontWeight: 700, textAlign: 'center', marginTop: '2px' }}>
-                            {getCardUnit(item.id) === 'lb'
-                              ? `≈ ${item.targetWeightKg ?? 0} kg`
-                              : `≈ ${(((item.targetWeightKg ?? 0) * 2.20462)).toFixed(1)} lb`}
-                          </div>
+                            title="Cambiar unidad kg / lb"
+                          >
+                            <span>{getCardUnit(item.id).toUpperCase()}</span>
+                            <IonIcon icon={swapHorizontalOutline} style={{ fontSize: '10px' }} />
+                          </button>
                         </div>
-
-                        <div>
-                          <IonLabel style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--ion-color-medium)', display: 'block', marginBottom: '4px' }}>
-                            Reps Objetivo
-                          </IonLabel>
-                          <IonInput
-                            type="number"
-                            value={item.targetReps ?? 10}
-                            style={{
-                              background: 'var(--ion-background-color, #121215)',
-                              borderRadius: '8px',
-                              border: '1px solid var(--ion-color-step-150, #27272a)',
-                              textAlign: 'center',
-                              fontWeight: 700,
-                            }}
-                            onIonInput={(e) => updateRoutineExercise(item.id, { targetReps: parseInt(e.detail.value || '1', 10) || 1 })}
-                          />
-                        </div>
+                        <div>REPETICIONES</div>
                       </>
                     )}
+                    {item.mode === 'reps_only' && <div>REPETICIONES</div>}
+                    {item.mode === 'duration' && <div>SEGUNDOS</div>}
+                    <div>OPCIONES</div>
+                  </div>
 
-                    {item.mode === 'reps_only' && (
-                      <div>
-                        <IonLabel style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--ion-color-medium)', display: 'block', marginBottom: '4px' }}>
-                          Reps Objetivo
-                        </IonLabel>
-                        <IonInput
-                          type="number"
-                          value={item.targetReps ?? 12}
-                          style={{
-                            background: 'var(--ion-background-color, #121215)',
-                            borderRadius: '8px',
-                            border: '1px solid var(--ion-color-step-150, #27272a)',
-                            textAlign: 'center',
-                            fontWeight: 700,
-                          }}
-                          onIonInput={(e) => updateRoutineExercise(item.id, { targetReps: parseInt(e.detail.value || '1', 10) || 1 })}
-                        />
+                  {/* Table Rows: Each set in this routine exercise */}
+                  {ensureSetsConfig(item).map((s, sIdx) => {
+                    const setKey = `${item.id}-${sIdx}`;
+                    const isSingleEdit = !!singleEditSets[setKey];
+                    const setsList = ensureSetsConfig(item);
+
+                    return (
+                      <div
+                        key={sIdx}
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns:
+                            item.mode === 'weight_reps' ? '44px 1fr 1fr 50px' : '44px 2fr 50px',
+                          alignItems: 'center',
+                          padding: '6px 4px',
+                          background:
+                            sIdx % 2 === 0
+                              ? 'var(--ion-color-step-100, #161b24)'
+                              : 'var(--ion-color-step-50, #131720)',
+                          borderRadius: '10px',
+                          marginBottom: '6px',
+                          border: isSingleEdit
+                            ? '1.5px solid rgba(59, 130, 246, 0.5)'
+                            : '1px solid #232c3d',
+                        }}
+                      >
+                        {/* Set Number */}
+                        <div style={{ textAlign: 'center' }}>
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              width: '26px',
+                              height: '26px',
+                              borderRadius: '6px',
+                              background: 'rgba(255, 255, 255, 0.08)',
+                              color: '#94a3b8',
+                              fontWeight: 800,
+                              fontSize: '0.8rem',
+                              fontVariantNumeric: 'tabular-nums',
+                            }}
+                          >
+                            #{s.setNumber}
+                          </span>
+                        </div>
+
+                        {/* Mode inputs */}
+                        {item.mode === 'weight_reps' && (
+                          <>
+                            <div style={{ padding: '0 4px' }}>
+                              <IonInput
+                                type="number"
+                                step={getCardUnit(item.id) === 'lb' ? '1' : '0.5'}
+                                value={
+                                  s.targetWeightKg !== undefined
+                                    ? getCardUnit(item.id) === 'lb'
+                                      ? Number(((s.targetWeightKg || 0) * 2.20462262).toFixed(1))
+                                      : s.targetWeightKg
+                                    : ''
+                                }
+                                placeholder="0"
+                                onFocus={() => {
+                                  setSelectedWeightTarget({
+                                    exerciseId: item.id,
+                                    exerciseName: item.exerciseName,
+                                    setNumber: s.setNumber,
+                                    currentKg: s.targetWeightKg || 0,
+                                  });
+                                }}
+                                style={{
+                                  textAlign: 'center',
+                                  background: 'var(--ion-background-color, #10141c)',
+                                  borderRadius: '8px',
+                                  border: '1.5px solid #334155',
+                                  fontWeight: 800,
+                                  fontSize: '0.95rem',
+                                  color: '#ffffff',
+                                  height: '36px',
+                                }}
+                                onIonInput={(e) => {
+                                  const val = parseFloat(e.detail.value || '0');
+                                  const kg =
+                                    getCardUnit(item.id) === 'lb'
+                                      ? Number((val * 0.45359237).toFixed(1))
+                                      : val;
+                                  handleUpdateSetInRoutineExercise(item.id, sIdx, {
+                                    targetWeightKg: isNaN(kg) ? 0 : kg,
+                                  });
+                                }}
+                              />
+                            </div>
+
+                            <div style={{ padding: '0 4px' }}>
+                              <IonInput
+                                type="number"
+                                value={s.targetReps ?? ''}
+                                placeholder="10"
+                                style={{
+                                  textAlign: 'center',
+                                  background: 'var(--ion-background-color, #10141c)',
+                                  borderRadius: '8px',
+                                  border: '1.5px solid #334155',
+                                  fontWeight: 800,
+                                  fontSize: '0.95rem',
+                                  color: '#ffffff',
+                                  height: '36px',
+                                }}
+                                onIonInput={(e) =>
+                                  handleUpdateSetInRoutineExercise(item.id, sIdx, {
+                                    targetReps: parseInt(e.detail.value || '0', 10),
+                                  })
+                                }
+                              />
+                            </div>
+                          </>
+                        )}
+
+                        {item.mode === 'reps_only' && (
+                          <div style={{ padding: '0 6px' }}>
+                            <IonInput
+                              type="number"
+                              value={s.targetReps ?? ''}
+                              placeholder="10"
+                              style={{
+                                textAlign: 'center',
+                                background: 'var(--ion-background-color, #10141c)',
+                                borderRadius: '8px',
+                                border: '1.5px solid #334155',
+                                fontWeight: 800,
+                                fontSize: '0.95rem',
+                                color: '#ffffff',
+                                height: '36px',
+                              }}
+                              onIonInput={(e) =>
+                                handleUpdateSetInRoutineExercise(item.id, sIdx, {
+                                  targetReps: parseInt(e.detail.value || '0', 10),
+                                })
+                              }
+                            />
+                          </div>
+                        )}
+
+                        {item.mode === 'duration' && (
+                          <div style={{ padding: '0 6px' }}>
+                            <IonInput
+                              type="number"
+                              value={s.targetDurationSeconds ?? ''}
+                              placeholder="30"
+                              style={{
+                                textAlign: 'center',
+                                background: 'var(--ion-background-color, #10141c)',
+                                borderRadius: '8px',
+                                border: '1.5px solid #334155',
+                                fontWeight: 800,
+                                fontSize: '0.95rem',
+                                color: '#ffffff',
+                                height: '36px',
+                              }}
+                              onIonInput={(e) =>
+                                handleUpdateSetInRoutineExercise(item.id, sIdx, {
+                                  targetDurationSeconds: parseInt(e.detail.value || '0', 10),
+                                })
+                              }
+                            />
+                          </div>
+                        )}
+
+                        {/* Action buttons: Single Edit Toggle + Delete Set */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                          <button
+                            type="button"
+                            onClick={() => toggleSingleEditSet(item.id, sIdx)}
+                            style={{
+                              background: isSingleEdit ? 'rgba(59, 130, 246, 0.25)' : 'transparent',
+                              border: isSingleEdit ? '1px solid #3b82f6' : 'none',
+                              borderRadius: '6px',
+                              color: isSingleEdit ? '#60a5fa' : '#64748b',
+                              padding: '4px',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                            title={isSingleEdit ? 'Modo: Solo esta serie activa' : 'Toca para editar solo esta serie'}
+                          >
+                            <IonIcon icon={createOutline} style={{ fontSize: '14px' }} />
+                          </button>
+
+                          <button
+                            type="button"
+                            disabled={setsList.length <= 1}
+                            onClick={() => handleRemoveSetFromRoutineExercise(item.id, sIdx)}
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              color: setsList.length <= 1 ? '#475569' : '#ef4444',
+                              cursor: setsList.length <= 1 ? 'not-allowed' : 'pointer',
+                              padding: '4px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                            title={setsList.length <= 1 ? 'Mínimo 1 serie' : `Eliminar serie #${s.setNumber}`}
+                          >
+                            <IonIcon icon={trashOutline} style={{ fontSize: '15px' }} />
+                          </button>
+                        </div>
                       </div>
-                    )}
+                    );
+                  })}
 
-                    {item.mode === 'duration' && (
-                      <div>
-                        <IonLabel style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--ion-color-medium)', display: 'block', marginBottom: '4px' }}>
-                          Segundos
-                        </IonLabel>
-                        <IonInput
-                          type="number"
-                          value={item.targetDurationSeconds ?? 45}
-                          style={{
-                            background: 'var(--ion-background-color, #121215)',
-                            borderRadius: '8px',
-                            border: '1px solid var(--ion-color-step-150, #27272a)',
-                            textAlign: 'center',
-                            fontWeight: 700,
-                          }}
-                          onIonInput={(e) => updateRoutineExercise(item.id, { targetDurationSeconds: parseInt(e.detail.value || '10', 10) || 10 })}
-                        />
-                      </div>
-                    )}
+                  {/* Add Set Button & Rest duration controls */}
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      paddingTop: '8px',
+                      borderTop: '1px solid var(--ion-color-step-100, #27272a)',
+                      marginTop: '8px',
+                      flexWrap: 'wrap',
+                      gap: '8px',
+                    }}
+                  >
+                    <IonButton
+                      size="small"
+                      fill="outline"
+                      color="primary"
+                      style={{ borderRadius: '8px', fontWeight: 600, margin: 0 }}
+                      onClick={() => handleAddSetToRoutineExercise(item.id)}
+                    >
+                      <IonIcon slot="start" icon={addOutline} />
+                      + Agregar Serie
+                    </IonButton>
 
-                    <div>
-                      <IonLabel style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--ion-color-medium)', display: 'block', marginBottom: '4px' }}>
-                        Descanso (seg)
-                      </IonLabel>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <IonIcon icon={timerOutline} color="medium" style={{ fontSize: '14px' }} />
+                      <span style={{ fontSize: '0.74rem', fontWeight: 700, color: 'var(--ion-color-medium)' }}>
+                        Descanso:
+                      </span>
                       <IonInput
                         type="number"
                         value={item.restSeconds ?? 60}
                         style={{
                           background: 'var(--ion-background-color, #121215)',
-                          borderRadius: '8px',
+                          borderRadius: '6px',
                           border: '1px solid var(--ion-color-step-150, #27272a)',
                           textAlign: 'center',
                           fontWeight: 700,
+                          width: '56px',
+                          height: '28px',
+                          fontSize: '0.8rem',
                         }}
-                        onIonInput={(e) => updateRoutineExercise(item.id, { restSeconds: parseInt(e.detail.value || '30', 10) || 30 })}
+                        onIonInput={(e) =>
+                          updateRoutineExercise(item.id, {
+                            restSeconds: parseInt(e.detail.value || '60', 10) || 60,
+                          })
+                        }
                       />
+                      <span style={{ fontSize: '0.74rem', color: 'var(--ion-color-medium)' }}>seg</span>
                     </div>
                   </div>
                 </IonCardContent>
@@ -1212,6 +1525,23 @@ export const RoutineFormModal: React.FC<RoutineFormModalProps> = ({
         <WeightConverterModal
           isOpen={showConverterModal}
           onClose={() => setShowConverterModal(false)}
+          initialKg={selectedWeightTarget ? selectedWeightTarget.currentKg : undefined}
+          targetInputDescription={
+            selectedWeightTarget
+              ? `${selectedWeightTarget.exerciseName} - Serie #${selectedWeightTarget.setNumber}`
+              : undefined
+          }
+          onApplyKg={
+            selectedWeightTarget
+              ? (kg) => {
+                  handleApplyWeightFromConverter(
+                    selectedWeightTarget.exerciseId,
+                    selectedWeightTarget.setNumber,
+                    kg
+                  );
+                }
+              : undefined
+          }
         />
       </IonContent>
     </IonModal>

@@ -3,24 +3,33 @@
   "name": "FitTrack - Rutinas & Fitness",
   "icons": [
     {
-      "src": "favicon.png",
+      "src": "./favicon.png",
       "sizes": "64x64",
       "type": "image/png"
     },
     {
-      "src": "icon-192.png",
+      "src": "./icon-192.png",
       "type": "image/png",
       "sizes": "192x192"
     },
     {
-      "src": "icon-512.png",
+      "src": "./icon-512.png",
       "type": "image/png",
       "sizes": "512x512",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "maskable"
     }
   ],
-  "start_url": ".",
+  "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
+  "orientation": "portrait",
   "theme_color": "#111827",
-  "background_color": "#0B132B"
+  "background_color": "#0B132B",
+  "categories": ["fitness", "health", "sports"]
 }
