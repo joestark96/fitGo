@@ -33,58 +33,88 @@ class SqliteService {
       return;
     }
 
-    try {
-      this.sqliteConnection = new SQLiteConnection(CapacitorSQLite);
-      const platform = Capacitor.getPlatform();
-
-      // On web, register jeep-sqlite custom element if needed
-      if (platform === 'web' && typeof window !== 'undefined') {
-        try {
-          const { defineCustomElements: jeepSqlite } = await import('jeep-sqlite/loader');
-          jeepSqlite(window);
-          await customElements.whenDefined('jeep-sqlite');
-
-          let jeepEl = document.querySelector('jeep-sqlite');
-          if (!jeepEl) {
-            jeepEl = document.createElement('jeep-sqlite');
-            jeepEl.setAttribute('wasm-path', './assets');
-            document.body.appendChild(jeepEl);
-          }
-          await this.sqliteConnection.initWebStore();
-        } catch (webErr) {
-          console.warn('[FitTrack SQLite] WebStore initialization note:', webErr);
+    // Strict safety timeout: SQLite init must NEVER hang or block execution (max 2 seconds)
+    const timeoutPromise = new Promise<void>((resolve) => {
+      setTimeout(() => {
+        if (!this.initialized) {
+          console.warn('[FitTrack SQLite] Init safety timeout reached, continuing with storage adapter');
+          this.initialized = true;
+          resolve();
         }
+      }, 2000);
+    });
+
+    const initWorker = async () => {
+      try {
+        this.sqliteConnection = new SQLiteConnection(CapacitorSQLite);
+        const platform = Capacitor.getPlatform();
+
+        // On web, attempt jeep-sqlite web store with strict timeouts
+        if (platform === 'web') {
+          if (typeof window === 'undefined') {
+            this.initialized = true;
+            return;
+          }
+
+          try {
+            const { defineCustomElements: jeepSqlite } = await import('jeep-sqlite/loader');
+            jeepSqlite(window);
+
+            await Promise.race([
+              customElements.whenDefined('jeep-sqlite'),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('jeep-sqlite define timeout')), 800)),
+            ]);
+
+            let jeepEl = document.querySelector('jeep-sqlite');
+            if (!jeepEl) {
+              jeepEl = document.createElement('jeep-sqlite');
+              jeepEl.setAttribute('wasm-path', './assets');
+              document.body.appendChild(jeepEl);
+            }
+
+            await Promise.race([
+              this.sqliteConnection.initWebStore(),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('initWebStore timeout')), 800)),
+            ]);
+          } catch (webErr) {
+            console.warn('[FitTrack SQLite] WebStore initialization note (using localStorage on web):', webErr);
+            this.initialized = true;
+            return;
+          }
+        }
+
+        // Check existing connection or create a new one
+        const isConn = await this.sqliteConnection.isConnection(DB_NAME, false);
+        if (isConn.result) {
+          this.db = await this.sqliteConnection.retrieveConnection(DB_NAME, false);
+        } else {
+          this.db = await this.sqliteConnection.createConnection(
+            DB_NAME,
+            false,
+            'no-encryption',
+            1,
+            false
+          );
+        }
+
+        await this.db.open();
+        this.isNativeOrWebReady = true;
+
+        // Create database schema
+        await this.createSchema();
+
+        // Migrate existing localStorage data to SQLite if not done yet
+        await this.migrateFromLocalStorage();
+
+        this.initialized = true;
+        console.log(`[FitTrack SQLite] Database "${DB_NAME}" initialized successfully on ${platform}`);
+      } catch (err) {
+        console.warn('[FitTrack SQLite] Falling back to storage adapter (non-blocking):', err);
+        this.initialized = true;
       }
+    };
 
-      // Check existing connection or create a new one
-      const isConn = await this.sqliteConnection.isConnection(DB_NAME, false);
-      if (isConn.result) {
-        this.db = await this.sqliteConnection.retrieveConnection(DB_NAME, false);
-      } else {
-        this.db = await this.sqliteConnection.createConnection(
-          DB_NAME,
-          false,
-          'no-encryption',
-          1,
-          false
-        );
-      }
-
-      await this.db.open();
-      this.isNativeOrWebReady = true;
-
-      // Create database schema
-      await this.createSchema();
-
-      // Migrate existing localStorage data to SQLite if not done yet
-      await this.migrateFromLocalStorage();
-
-      this.initialized = true;
-      console.log(`[FitTrack SQLite] Database "${DB_NAME}" initialized successfully on ${platform}`);
-    } catch (err) {
-      console.warn('[FitTrack SQLite] Falling back to storage adapter (non-blocking):', err);
-      this.initialized = true;
-    }
+    await Promise.race([initWorker(), timeoutPromise]);
   }
 
   public isReady(): boolean {
