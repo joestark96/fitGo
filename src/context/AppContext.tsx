@@ -104,6 +104,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   useEffect(() => {
     refreshData();
 
+    // Ensure SQLite database is initialized and state refreshed
+    StorageService.init().then(() => {
+      refreshData();
+    });
+
     // Listen for app going into background to ensure workout notifications are scheduled
     let listenerHandle: any = null;
     try {

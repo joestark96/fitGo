@@ -19,6 +19,7 @@
     "build:android": "npm run build && npx cap sync android && cd android && gradlew assembleRelease"
   },
   "dependencies": {
+    "@capacitor-community/sqlite": "^8.1.1",
     "@capacitor/android": "^8.6.0",
     "@capacitor/app": "8.1.2",
     "@capacitor/core": "8.6.0",
@@ -29,6 +30,7 @@
     "@ionic/react": "^9.0.0",
     "@ionic/react-router": "^9.0.0",
     "ionicons": "^8.1.0",
+    "jeep-sqlite": "^2.8.0",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "react-router": "^6.30.0",

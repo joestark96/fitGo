@@ -11,6 +11,7 @@ import {
   CalorieRecommendation,
   DailyActivity,
 } from '../types';
+import { sqliteService } from './sqliteService';
 
 const STORAGE_KEYS = {
   PROFILE: 'fittrack_user_profile',
@@ -436,6 +437,63 @@ export const DEFAULT_ROUTINES: Routine[] = [
 ];
 
 export const StorageService = {
+  /**
+   * Initializes SQLite database and hydrates local storage cache if needed
+   */
+  async init(): Promise<void> {
+    await sqliteService.init();
+    if (sqliteService.isReady()) {
+      try {
+        const prof = await sqliteService.getProfile();
+        if (prof) {
+          localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(prof));
+        }
+
+        const exs = await sqliteService.getExercises();
+        if (exs && exs.length > 0) {
+          localStorage.setItem(STORAGE_KEYS.EXERCISES, JSON.stringify(exs));
+        }
+
+        const rts = await sqliteService.getRoutines();
+        if (rts && rts.length > 0) {
+          localStorage.setItem(STORAGE_KEYS.ROUTINES, JSON.stringify(rts));
+        }
+
+        const weights = await sqliteService.getWeightRecords();
+        if (weights && weights.length > 0) {
+          localStorage.setItem(STORAGE_KEYS.WEIGHT_RECORDS, JSON.stringify(weights));
+        }
+
+        const workouts = await sqliteService.getWorkoutSessions();
+        if (workouts && workouts.length > 0) {
+          localStorage.setItem(STORAGE_KEYS.WORKOUT_SESSIONS, JSON.stringify(workouts));
+        }
+
+        const foods = await sqliteService.getFoodEntries();
+        if (foods && foods.length > 0) {
+          localStorage.setItem(STORAGE_KEYS.FOOD_ENTRIES, JSON.stringify(foods));
+        }
+
+        const acts = await sqliteService.getDailyActivities();
+        if (acts && acts.length > 0) {
+          localStorage.setItem(STORAGE_KEYS.DAILY_ACTIVITIES, JSON.stringify(acts));
+        }
+
+        const actLevel = await sqliteService.getActivityLevel();
+        if (actLevel) {
+          localStorage.setItem(STORAGE_KEYS.ACTIVITY_LEVEL, actLevel);
+        }
+
+        const activeW = await sqliteService.getActiveWorkout();
+        if (activeW) {
+          localStorage.setItem(STORAGE_KEYS.ACTIVE_WORKOUT, JSON.stringify(activeW));
+        }
+      } catch (e) {
+        console.warn('[StorageService] Error hydrating from SQLite:', e);
+      }
+    }
+  },
+
   // User Profile
   getUserProfile(): UserProfile | null {
     try {
@@ -451,6 +509,7 @@ export const StorageService = {
   saveUserProfile(profile: UserProfile): void {
     try {
       localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(profile));
+      sqliteService.saveProfile(profile).catch((e) => console.warn('SQLite saveProfile err:', e));
     } catch (e) {
       console.error('Error saving profile to localStorage:', e);
     }
@@ -528,6 +587,7 @@ export const StorageService = {
       updated = [exercise, ...list];
     }
     localStorage.setItem(STORAGE_KEYS.EXERCISES, JSON.stringify(updated));
+    sqliteService.saveExercise(exercise).catch((e) => console.warn('SQLite saveExercise err:', e));
     return updated;
   },
 
@@ -568,22 +628,28 @@ export const StorageService = {
     const list = this.getRoutines();
     const existingIndex = list.findIndex((r) => r.id === routine.id);
     let updated: Routine[];
+    let toSave: Routine;
     if (existingIndex >= 0) {
+      toSave = { ...routine, updatedAt: new Date().toISOString() };
       updated = [...list];
-      updated[existingIndex] = { ...routine, updatedAt: new Date().toISOString() };
+      updated[existingIndex] = toSave;
     } else {
-      updated = [
-        { ...routine, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-        ...list,
-      ];
+      toSave = {
+        ...routine,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      updated = [toSave, ...list];
     }
     localStorage.setItem(STORAGE_KEYS.ROUTINES, JSON.stringify(updated));
+    sqliteService.saveRoutine(toSave).catch((e) => console.warn('SQLite saveRoutine err:', e));
     return updated;
   },
 
   deleteRoutine(routineId: string): Routine[] {
     const list = this.getRoutines().filter((r) => r.id !== routineId);
     localStorage.setItem(STORAGE_KEYS.ROUTINES, JSON.stringify(list));
+    sqliteService.deleteRoutine(routineId).catch((e) => console.warn('SQLite deleteRoutine err:', e));
     return list;
   },
 
@@ -627,12 +693,14 @@ export const StorageService = {
     }
     updated.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     localStorage.setItem(STORAGE_KEYS.WEIGHT_RECORDS, JSON.stringify(updated));
+    sqliteService.saveWeightRecord(record).catch((e) => console.warn('SQLite saveWeightRecord err:', e));
     return updated;
   },
 
   deleteWeightRecord(recordId: string): WeightRecord[] {
     const list = this.getWeightRecords().filter((r) => r.id !== recordId);
     localStorage.setItem(STORAGE_KEYS.WEIGHT_RECORDS, JSON.stringify(list));
+    sqliteService.deleteWeightRecord(recordId).catch((e) => console.warn('SQLite deleteWeightRecord err:', e));
     return list;
   },
 
@@ -680,12 +748,14 @@ export const StorageService = {
       updated = [session, ...list];
     }
     localStorage.setItem(STORAGE_KEYS.WORKOUT_SESSIONS, JSON.stringify(updated));
+    sqliteService.saveWorkoutSession(session).catch((e) => console.warn('SQLite saveWorkoutSession err:', e));
     return updated;
   },
 
   deleteWorkoutSession(sessionId: string): WorkoutSession[] {
     const list = this.getWorkoutSessions().filter((s) => s.id !== sessionId);
     localStorage.setItem(STORAGE_KEYS.WORKOUT_SESSIONS, JSON.stringify(list));
+    sqliteService.deleteWorkoutSession(sessionId).catch((e) => console.warn('SQLite deleteWorkoutSession err:', e));
     return list;
   },
 
@@ -710,13 +780,17 @@ export const StorageService = {
     const list = this.getDailyActivities();
     const existingIndex = list.findIndex((a) => a.date === activity.date);
     let updated: DailyActivity[];
+    let toSave: DailyActivity;
     if (existingIndex >= 0) {
+      toSave = { ...list[existingIndex], ...activity };
       updated = [...list];
-      updated[existingIndex] = { ...updated[existingIndex], ...activity };
+      updated[existingIndex] = toSave;
     } else {
+      toSave = activity;
       updated = [activity, ...list];
     }
     localStorage.setItem(STORAGE_KEYS.DAILY_ACTIVITIES, JSON.stringify(updated));
+    sqliteService.saveDailyActivity(toSave).catch((e) => console.warn('SQLite saveDailyActivity err:', e));
     return updated;
   },
 
@@ -759,6 +833,7 @@ export const StorageService = {
     }
     try {
       localStorage.setItem(STORAGE_KEYS.FOOD_ENTRIES, JSON.stringify(updated));
+      sqliteService.saveFoodEntry(entry).catch((e) => console.warn('SQLite saveFoodEntry err:', e));
     } catch (e) {
       console.error('Error saving food entry:', e);
     }
@@ -770,6 +845,7 @@ export const StorageService = {
     const updated = list.filter((f) => f.id !== id);
     try {
       localStorage.setItem(STORAGE_KEYS.FOOD_ENTRIES, JSON.stringify(updated));
+      sqliteService.deleteFoodEntry(id).catch((e) => console.warn('SQLite deleteFoodEntry err:', e));
     } catch (e) {
       console.error('Error deleting food entry:', e);
     }
@@ -791,6 +867,7 @@ export const StorageService = {
   saveActivityLevel(level: ActivityLevel): void {
     try {
       localStorage.setItem(STORAGE_KEYS.ACTIVITY_LEVEL, level);
+      sqliteService.saveActivityLevel(level).catch((e) => console.warn('SQLite saveActivityLevel err:', e));
     } catch (e) {
       console.error('Error saving activity level:', e);
     }
@@ -815,6 +892,7 @@ export const StorageService = {
       } else {
         localStorage.setItem(STORAGE_KEYS.ACTIVE_WORKOUT, JSON.stringify(workout));
       }
+      sqliteService.saveActiveWorkout(workout).catch((e) => console.warn('SQLite saveActiveWorkout err:', e));
     } catch (e) {
       console.error('Error saving active workout:', e);
     }
@@ -830,6 +908,8 @@ export const StorageService = {
     localStorage.removeItem(STORAGE_KEYS.FOOD_ENTRIES);
     localStorage.removeItem(STORAGE_KEYS.ACTIVITY_LEVEL);
     localStorage.removeItem(STORAGE_KEYS.ACTIVE_WORKOUT);
+    localStorage.removeItem(STORAGE_KEYS.DAILY_ACTIVITIES);
+    sqliteService.clearAllData().catch((e) => console.warn('SQLite clearAllData err:', e));
   },
 };
 

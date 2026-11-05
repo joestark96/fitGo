@@ -2,14 +2,25 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 
 import App from './App';
+import { StorageService } from './services/storage';
 
-const container = document.getElementById('root');
-const root = createRoot(container!);
-root.render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
-);
+const bootApp = async () => {
+  try {
+    await StorageService.init();
+  } catch (err) {
+    console.warn('[FitTrack] Storage init note:', err);
+  }
+
+  const container = document.getElementById('root');
+  const root = createRoot(container!);
+  root.render(
+    <React.StrictMode>
+      <App />
+    </React.StrictMode>,
+  );
+};
+
+bootApp();
 
 // Register PWA Service Worker in production web environments
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
