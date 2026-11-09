@@ -155,10 +155,9 @@ export const ProfilePage: React.FC = () => {
         });
 
         await Share.share({
-          title: `Respaldo FitTrack (${datePart})`,
-          text: 'Elige "Guardar en Drive" para guardar tu progreso de FitTrack en tu cuenta de Google Drive.',
-          url: writtenFile.uri,
-          dialogTitle: 'Guardar Respaldo en Google Drive',
+          title: fileName,
+          files: [writtenFile.uri],
+          dialogTitle: 'Elige "Drive" para guardar tu respaldo',
         });
 
         setBackupVerificationInfo({
