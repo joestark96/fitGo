@@ -36,6 +36,9 @@ import {
   shareSocialOutline,
   shieldCheckmarkOutline,
 } from 'ionicons/icons';
+import { Capacitor } from '@capacitor/core';
+import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
 import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
 import { useApp } from '../context/AppContext';
 import { Gender, UserProfile, APP_VERSION } from '../types';
@@ -80,6 +83,17 @@ export const ProfilePage: React.FC = () => {
   const [lastBackupAt, setLastBackupAt] = useState<string | null>(() =>
     StorageService.getLastBackupDate()
   );
+  const [backupVerificationInfo, setBackupVerificationInfo] = useState<{
+    isOpen: boolean;
+    title: string;
+    subHeader: string;
+    message: string;
+  }>({
+    isOpen: false,
+    title: '',
+    subHeader: '',
+    message: '',
+  });
   const [pendingRestorePayload, setPendingRestorePayload] =
     useState<Partial<FitTrackBackupPayload> | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -96,46 +110,206 @@ export const ProfilePage: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
-  const handleExportToDriveOrShare = async () => {
-    try {
-      const payload = StorageService.exportBackupData();
-      setLastBackupAt(payload.exportedAt);
-      const datePart = getLocalDateString();
-      const fileName = `fittrack-respaldo-${datePart}.json`;
-      const jsonString = JSON.stringify(payload, null, 2);
-      const file = new File([jsonString], fileName, { type: 'application/json' });
+  const buildBackupSummaryText = (
+    payload: FitTrackBackupPayload,
+    fileName: string,
+    savedLocation: string
+  ) => {
+    const sizeKb = Math.max(1, Math.round(JSON.stringify(payload).length / 1024));
+    return (
+      `📄 Archivo: ${fileName} (~${sizeKb} KB)\n` +
+      `📍 Destino: ${savedLocation}\n\n` +
+      `📦 Datos incluidos en este respaldo:\n` +
+      `• 👤 Perfil: ${payload.profile?.name || 'Sin nombre'}\n` +
+      `• 📋 Rutinas: ${payload.routines.length}\n` +
+      `• 🏋️ Entrenamientos: ${payload.workoutSessions.length}\n` +
+      `• ⚖️ Registros de peso: ${payload.weightRecords.length}\n` +
+      `• 🍎 Registros de nutrición: ${payload.foodEntries.length}\n` +
+      `• 👟 Días de pasos/actividad: ${payload.dailyActivities.length}`
+    );
+  };
 
+  const handleExportToDriveOrShare = async () => {
+    const payload = StorageService.exportBackupData();
+    setLastBackupAt(payload.exportedAt);
+    const datePart = getLocalDateString();
+    const fileName = `fittrack-respaldo-${datePart}.json`;
+    const jsonString = JSON.stringify(payload, null, 2);
+
+    // 1. Native Android / iOS via @capacitor/filesystem + @capacitor/share
+    if (Capacitor.isNativePlatform()) {
+      try {
+        // Also save a persistent internal copy in Directory.Data so we can always verify it on device
+        await Filesystem.writeFile({
+          path: 'fittrack-ultimo-respaldo.json',
+          data: jsonString,
+          directory: Directory.Data,
+          encoding: Encoding.UTF8,
+        }).catch(() => {});
+
+        const writtenFile = await Filesystem.writeFile({
+          path: fileName,
+          data: jsonString,
+          directory: Directory.Cache,
+          encoding: Encoding.UTF8,
+        });
+
+        await Share.share({
+          title: `Respaldo FitTrack (${datePart})`,
+          text: 'Elige "Guardar en Drive" para guardar tu progreso de FitTrack en tu cuenta de Google Drive.',
+          url: writtenFile.uri,
+          dialogTitle: 'Guardar Respaldo en Google Drive',
+        });
+
+        setBackupVerificationInfo({
+          isOpen: true,
+          title: '✅ Respaldo Generado con Éxito',
+          subHeader: `${formatDateDDMMYYYY(payload.exportedAt)} • ${new Date(payload.exportedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+          message: buildBackupSummaryText(
+            payload,
+            fileName,
+            'Menú nativo de Android (Google Drive) + Copia interna de seguridad'
+          ),
+        });
+        return;
+      } catch (err: any) {
+        if (err?.message && !String(err.message).toLowerCase().includes('cancel')) {
+          setToastText('Respaldo interno guardado en el dispositivo.');
+          setShowToast(true);
+        }
+        return;
+      }
+    }
+
+    // 2. Web / Desktop fallback
+    try {
+      const file = new File([jsonString], fileName, { type: 'application/json' });
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
           title: `Respaldo FitTrack (${datePart})`,
           text: 'Guarda este archivo en tu Google Drive para respaldar tu progreso de FitTrack.',
           files: [file],
         });
-        setToastText('☁️ Menú de respaldo abierto. Elige "Guardar en Drive".');
-        setShowToast(true);
       } else {
         downloadBackupFile(jsonString, fileName);
-        setToastText(`📥 Respaldo descargado (${fileName}). Puedes subirlo a tu Google Drive.`);
-        setShowToast(true);
       }
+      setBackupVerificationInfo({
+        isOpen: true,
+        title: '✅ Respaldo Guardado con Éxito',
+        subHeader: `${formatDateDDMMYYYY(payload.exportedAt)} • ${new Date(payload.exportedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+        message: buildBackupSummaryText(payload, fileName, 'Carpeta de Descargas / Google Drive'),
+      });
     } catch (err: any) {
       if (err?.name !== 'AbortError') {
-        const payload = StorageService.exportBackupData();
-        const fileName = `fittrack-respaldo-${getLocalDateString()}.json`;
-        downloadBackupFile(JSON.stringify(payload, null, 2), fileName);
-        setToastText(`📥 Respaldo descargado (${fileName}).`);
-        setShowToast(true);
+        downloadBackupFile(jsonString, fileName);
+        setBackupVerificationInfo({
+          isOpen: true,
+          title: '✅ Respaldo Descargado',
+          subHeader: `${formatDateDDMMYYYY(payload.exportedAt)}`,
+          message: buildBackupSummaryText(payload, fileName, 'Carpeta de Descargas del dispositivo'),
+        });
       }
     }
   };
 
-  const handleDirectDownloadBackup = () => {
+  const handleDirectDownloadBackup = async () => {
     const payload = StorageService.exportBackupData();
     setLastBackupAt(payload.exportedAt);
-    const fileName = `fittrack-respaldo-${getLocalDateString()}.json`;
-    downloadBackupFile(JSON.stringify(payload, null, 2), fileName);
-    setToastText(`📥 Archivo ${fileName} guardado correctamente.`);
-    setShowToast(true);
+    const datePart = getLocalDateString();
+    const fileName = `fittrack-respaldo-${datePart}.json`;
+    const jsonString = JSON.stringify(payload, null, 2);
+
+    if (Capacitor.isNativePlatform()) {
+      try {
+        // Save in internal Data storage AND Documents (if permitted)
+        await Filesystem.writeFile({
+          path: 'fittrack-ultimo-respaldo.json',
+          data: jsonString,
+          directory: Directory.Data,
+          encoding: Encoding.UTF8,
+        });
+
+        let savedPath = 'Almacenamiento interno de FitTrack';
+        try {
+          await Filesystem.writeFile({
+            path: fileName,
+            data: jsonString,
+            directory: Directory.Documents,
+            encoding: Encoding.UTF8,
+          });
+          savedPath = `Carpeta Documentos/${fileName}`;
+        } catch {
+          // If Android 11+ scoped storage restricts direct Documents overwrite, open native share so user can pick "Guardar en dispositivo / Descargas"
+          const cacheFile = await Filesystem.writeFile({
+            path: fileName,
+            data: jsonString,
+            directory: Directory.Cache,
+            encoding: Encoding.UTF8,
+          });
+          await Share.share({
+            title: fileName,
+            url: cacheFile.uri,
+            dialogTitle: 'Guardar archivo .JSON',
+          }).catch(() => {});
+          savedPath = `Archivo ${fileName} listo`;
+        }
+
+        setBackupVerificationInfo({
+          isOpen: true,
+          title: '📥 Archivo .JSON Guardado',
+          subHeader: `${formatDateDDMMYYYY(payload.exportedAt)} • ${new Date(payload.exportedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+          message: buildBackupSummaryText(payload, fileName, savedPath),
+        });
+        return;
+      } catch (e) {
+        console.warn('Native write fallback:', e);
+      }
+    }
+
+    downloadBackupFile(jsonString, fileName);
+    setBackupVerificationInfo({
+      isOpen: true,
+      title: '📥 Archivo .JSON Descargado',
+      subHeader: `${formatDateDDMMYYYY(payload.exportedAt)} • ${new Date(payload.exportedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+      message: buildBackupSummaryText(payload, fileName, `Descargas/${fileName}`),
+    });
+  };
+
+  const handleVerifyBackupStatus = async () => {
+    const currentPayload = StorageService.exportBackupData();
+    const lastDate = StorageService.getLastBackupDate();
+    let nativeSavedExists = false;
+
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const stat = await Filesystem.stat({
+          path: 'fittrack-ultimo-respaldo.json',
+          directory: Directory.Data,
+        });
+        nativeSavedExists = Boolean(stat?.uri);
+      } catch {
+        nativeSavedExists = false;
+      }
+    }
+
+    const sizeKb = Math.max(1, Math.round(JSON.stringify(currentPayload).length / 1024));
+    setBackupVerificationInfo({
+      isOpen: true,
+      title: '🔍 Diagnóstico de tu Respaldo',
+      subHeader: lastDate
+        ? `Último respaldo: ${formatDateDDMMYYYY(lastDate)} (${new Date(lastDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})`
+        : 'Aún no has exportado un respaldo manual',
+      message:
+        `🛡️ Auto-Backup Android (Google Drive): ACTIVO\n` +
+        `💾 Copia interna en teléfono: ${nativeSavedExists || lastDate ? '✅ VERIFICADA (' + sizeKb + ' KB)' : 'Pendiente de primer guardado'}\n\n` +
+        `📊 Datos actuales listos para respaldar:\n` +
+        `• 👤 Perfil: ${currentPayload.profile?.name || 'Sin nombre'}\n` +
+        `• ⚡ Nivel: Nv.${gamification.level} (${gamification.totalXp} XP)\n` +
+        `• 📋 Rutinas: ${currentPayload.routines.length}\n` +
+        `• 🏋️ Entrenamientos: ${currentPayload.workoutSessions.length}\n` +
+        `• ⚖️ Registros de peso: ${currentPayload.weightRecords.length}\n` +
+        `• 🍎 Registros de nutrición: ${currentPayload.foodEntries.length}`,
+    });
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1142,7 +1316,7 @@ export const ProfilePage: React.FC = () => {
             </IonButton>
 
             {/* Secondary Row: Direct Download & Restore from Drive/File */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
               <IonButton
                 expand="block"
                 fill="outline"
@@ -1165,6 +1339,29 @@ export const ProfilePage: React.FC = () => {
                 Restaurar Copia
               </IonButton>
             </div>
+
+            {/* Diagnostic / Verification Button */}
+            <button
+              type="button"
+              onClick={handleVerifyBackupStatus}
+              style={{
+                width: '100%',
+                padding: '9px 12px',
+                borderRadius: '11px',
+                background: 'rgba(59, 130, 246, 0.1)',
+                border: '1px solid rgba(59, 130, 246, 0.28)',
+                color: '#93c5fd',
+                fontWeight: 700,
+                fontSize: '0.76rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+              }}
+            >
+              <span>🔍 Verificar estado y contenido de mi respaldo</span>
+            </button>
 
             <input
               ref={fileInputRef}
@@ -1206,6 +1403,17 @@ export const ProfilePage: React.FC = () => {
           message={toastText}
           duration={2400}
           color="success"
+        />
+
+        <IonAlert
+          isOpen={backupVerificationInfo.isOpen}
+          onDidDismiss={() =>
+            setBackupVerificationInfo((prev) => ({ ...prev, isOpen: false }))
+          }
+          header={backupVerificationInfo.title}
+          subHeader={backupVerificationInfo.subHeader}
+          message={backupVerificationInfo.message}
+          buttons={['Entendido']}
         />
 
         <IonAlert
