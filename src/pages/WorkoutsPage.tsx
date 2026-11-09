@@ -38,6 +38,7 @@ import { RoutineFormModal } from '../components/RoutineFormModal';
 import { WorkoutPlayerModal } from '../components/WorkoutPlayerModal';
 import { ExerciseCatalogModal } from '../components/ExerciseCatalogModal';
 import { AppHeader } from '../components/AppHeader';
+import { GamificationModal } from '../components/GamificationModal';
 
 export const WorkoutsPage: React.FC = () => {
   const {
@@ -47,6 +48,7 @@ export const WorkoutsPage: React.FC = () => {
     activeWorkout,
     workoutSessions,
     profile,
+    gamification,
   } = useApp();
 
   const [isRoutineModalOpen, setIsRoutineModalOpen] = useState(false);
@@ -55,6 +57,7 @@ export const WorkoutsPage: React.FC = () => {
   const [routineToDelete, setRoutineToDelete] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isCatalogOpen, setIsCatalogOpen] = useState(false);
+  const [isGamificationOpen, setIsGamificationOpen] = useState(false);
 
   const handleCreateNew = () => {
     setRoutineToEdit(null);
@@ -142,7 +145,7 @@ export const WorkoutsPage: React.FC = () => {
         )}
 
         {/* Welcome Section */}
-        <div style={{ marginBottom: '20px' }}>
+        <div style={{ marginBottom: '16px' }}>
           <h1 style={{ margin: '0 0 4px', fontWeight: 800, fontSize: '1.6rem', letterSpacing: '-0.4px' }}>
             {profile?.name ? `Hola, ${profile.name.split(' ')[0]}` : 'Entrenamientos'}
           </h1>
@@ -150,6 +153,89 @@ export const WorkoutsPage: React.FC = () => {
             Selecciona una rutina para iniciar tu sesión o crea una personalizada.
           </p>
         </div>
+
+        {/* Gamification: Daily Missions & Level Banner */}
+        <IonCard
+          onClick={() => setIsGamificationOpen(true)}
+          style={{
+            margin: '0 0 20px',
+            borderRadius: '18px',
+            background: 'linear-gradient(135deg, #162032 0%, #121722 100%)',
+            border: '1px solid rgba(59, 130, 246, 0.32)',
+            cursor: 'pointer',
+          }}
+        >
+          <IonCardContent style={{ padding: '14px 16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div
+                  style={{
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '12px',
+                    background: 'rgba(59, 130, 246, 0.18)',
+                    border: '1px solid rgba(59, 130, 246, 0.4)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '1.35rem',
+                  }}
+                >
+                  {gamification.rank.icon}
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#60a5fa', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
+                    NIVEL {gamification.level} • {gamification.rank.title}
+                  </div>
+                  <div style={{ fontSize: '0.92rem', fontWeight: 800, color: '#ffffff' }}>
+                    🎯 Misiones de Hoy ({gamification.completedDailyMissionsCount}/3)
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#fb923c' }}>
+                  🔥 {gamification.activeStreakDays}d racha
+                </div>
+                <div style={{ fontSize: '0.72rem', color: '#a78bfa', fontWeight: 700 }}>
+                  🛡️ {gamification.shieldsAvailable}/3 escudos
+                </div>
+              </div>
+            </div>
+
+            {/* Level XP Mini Progress Bar */}
+            <div style={{ width: '100%', height: '6px', background: '#0b0f17', borderRadius: '999px', overflow: 'hidden', marginBottom: '10px' }}>
+              <div
+                style={{
+                  width: `${gamification.levelProgressPercent}%`,
+                  height: '100%',
+                  background: 'linear-gradient(90deg, #3b82f6 0%, #34d399 100%)',
+                  borderRadius: '999px',
+                }}
+              />
+            </div>
+
+            {/* 3 Daily Mission Quick Pills */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+              {gamification.dailyMissions.map((m) => (
+                <span
+                  key={m.id}
+                  style={{
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    padding: '4px 9px',
+                    borderRadius: '8px',
+                    background: m.completed ? 'rgba(16, 185, 129, 0.18)' : 'rgba(255, 255, 255, 0.05)',
+                    color: m.completed ? '#34d399' : '#cbd5e1',
+                    border: m.completed ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(255, 255, 255, 0.08)',
+                  }}
+                >
+                  {m.completed ? '✓ ' : `${m.icon} `}{m.title}
+                </span>
+              ))}
+            </div>
+          </IonCardContent>
+        </IonCard>
 
         {/* Section: Mis Rutinas */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
@@ -347,6 +433,12 @@ export const WorkoutsPage: React.FC = () => {
         <WorkoutPlayerModal
           isOpen={isPlayerOpen}
           onClose={() => setIsPlayerOpen(false)}
+        />
+
+        {/* Gamification Center Modal */}
+        <GamificationModal
+          isOpen={isGamificationOpen}
+          onClose={() => setIsGamificationOpen(false)}
         />
 
         {/* Modal de Catálogo General de Ejercicios */}

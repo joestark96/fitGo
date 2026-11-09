@@ -38,10 +38,12 @@ import { Gender, UserProfile, APP_VERSION } from '../types';
 import { calculateAge, formatDateDDMMYYYY } from '../services/storage';
 import { DateInput } from '../components/DateInput';
 import { AppHeader } from '../components/AppHeader';
+import { GamificationModal } from '../components/GamificationModal';
 import { notificationService } from '../services/notificationService';
 
 export const ProfilePage: React.FC = () => {
-  const { profile, saveProfile, resetAllData, workoutSessions, weightRecords } = useApp();
+  const { profile, saveProfile, resetAllData, workoutSessions, weightRecords, gamification } = useApp();
+  const [gamificationModalTab, setGamificationModalTab] = useState<'missions' | 'achievements' | 'tonnage' | null>(null);
 
   const [name, setName] = useState('');
   const [birthDate, setBirthDate] = useState('');
@@ -220,6 +222,65 @@ export const ProfilePage: React.FC = () => {
             </p>
           </IonText>
         </div>
+
+        {/* Athlete Gamification Card */}
+        <IonCard
+          onClick={() => setGamificationModalTab('achievements')}
+          style={{
+            margin: '0 0 14px',
+            borderRadius: '18px',
+            background: gamification.rank.gradient,
+            border: '1px solid rgba(255,255,255,0.16)',
+            cursor: 'pointer',
+          }}
+        >
+          <IonCardContent style={{ padding: '16px', color: '#ffffff' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div
+                  style={{
+                    width: '48px',
+                    height: '48px',
+                    borderRadius: '14px',
+                    background: 'rgba(15, 23, 42, 0.45)',
+                    border: '1.5px solid rgba(255, 255, 255, 0.35)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '1.65rem',
+                  }}
+                >
+                  {gamification.rank.icon}
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.8px', opacity: 0.9 }}>
+                    NIVEL {gamification.level} • {gamification.totalXp.toLocaleString()} XP
+                  </div>
+                  <div style={{ fontSize: '1.18rem', fontWeight: 900 }}>
+                    {gamification.rank.title}
+                  </div>
+                </div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: '0.85rem', fontWeight: 800 }}>
+                  🏆 {gamification.unlockedAchievementsCount}/{gamification.achievements.length}
+                </div>
+                <div style={{ fontSize: '0.72rem', opacity: 0.85 }}>Ver Trofeos →</div>
+              </div>
+            </div>
+
+            <div style={{ width: '100%', height: '8px', background: 'rgba(15, 23, 42, 0.5)', borderRadius: '999px', overflow: 'hidden' }}>
+              <div
+                style={{
+                  width: `${gamification.levelProgressPercent}%`,
+                  height: '100%',
+                  background: 'linear-gradient(90deg, #fde047 0%, #f97316 100%)',
+                  borderRadius: '999px',
+                }}
+              />
+            </div>
+          </IonCardContent>
+        </IonCard>
 
         {/* Stats Grid */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '20px' }}>
@@ -410,6 +471,11 @@ export const ProfilePage: React.FC = () => {
               handler: () => resetAllData(),
             },
           ]}
+        />
+        <GamificationModal
+          isOpen={gamificationModalTab !== null}
+          initialTab={gamificationModalTab || 'achievements'}
+          onClose={() => setGamificationModalTab(null)}
         />
       </IonContent>
     </IonPage>

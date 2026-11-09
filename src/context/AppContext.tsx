@@ -16,6 +16,7 @@ import {
 } from '../types';
 import { StorageService, calculateBmi, calculateCalorieRecommendation, getLocalDateString } from '../services/storage';
 import { notificationService } from '../services/notificationService';
+import { computeGamificationState, GamificationState } from '../services/gamificationService';
 
 interface AppContextType {
   profile: UserProfile | null;
@@ -29,6 +30,7 @@ interface AppContextType {
   dailyActivities: DailyActivity[];
   activityLevel: ActivityLevel;
   calorieRecommendation: CalorieRecommendation;
+  gamification: GamificationState;
   saveProfile: (profile: UserProfile) => void;
   saveRoutine: (routine: Routine) => void;
   deleteRoutine: (id: string) => void;
@@ -136,6 +138,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const calorieRecommendation = useMemo(() => {
     return calculateCalorieRecommendation(profile, latestWeight, activityLevel);
   }, [profile, latestWeight, activityLevel]);
+
+  const gamification = useMemo(() => {
+    return computeGamificationState({
+      workoutSessions,
+      foodEntries,
+      weightRecords,
+      dailyActivities,
+      exercises,
+      profile,
+    });
+  }, [workoutSessions, foodEntries, weightRecords, dailyActivities, exercises, profile]);
 
   const handleSetActivityLevel = (level: ActivityLevel) => {
     StorageService.saveActivityLevel(level);
@@ -533,6 +546,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         dailyActivities,
         activityLevel,
         calorieRecommendation,
+        gamification,
         saveProfile: handleSaveProfile,
         saveRoutine: handleSaveRoutine,
         deleteRoutine: handleDeleteRoutine,

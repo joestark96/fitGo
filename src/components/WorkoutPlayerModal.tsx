@@ -54,6 +54,11 @@ import { ExerciseCatalogModal } from './ExerciseCatalogModal';
 import { WeightConverterModal } from './WeightConverterModal';
 import { ExerciseDefinition, WorkoutSetResult, WorkoutExerciseResult, ExerciseMeasurementMode } from '../types';
 import { StorageService } from '../services/storage';
+import {
+  detectSessionPRs,
+  calculateSessionEarnedXp,
+  PersonalRecordItem,
+} from '../services/gamificationService';
 
 interface WorkoutPlayerModalProps {
   isOpen: boolean;
@@ -67,6 +72,8 @@ interface SessionSummary {
   totalSets: number;
   completedSets: number;
   totalVolumeKg: number;
+  earnedXp: number;
+  prs: PersonalRecordItem[];
   exercises: {
     name: string;
     completedSetsCount: number;
@@ -82,6 +89,7 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
     activeWorkout,
     workoutSessions,
     routines,
+    gamification,
     toggleSetCompleted,
     updateSetValues,
     addExerciseToActiveWorkout,
@@ -729,6 +737,55 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
                 Has finalizado con éxito <strong style={{ color: '#f8fafc' }}>{sessionSummary.routineName}</strong>
               </p>
 
+              {/* XP & Level Gamification Celebration Banner */}
+              <div
+                style={{
+                  background: 'rgba(15, 23, 42, 0.7)',
+                  border: '1px solid rgba(250, 204, 21, 0.35)',
+                  borderRadius: '14px',
+                  padding: '12px 14px',
+                  marginBottom: '14px',
+                  textAlign: 'left',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '1.3rem' }}>{gamification.rank.icon}</span>
+                    <div>
+                      <div style={{ fontSize: '0.72rem', fontWeight: 800, color: '#93c5fd', textTransform: 'uppercase' }}>
+                        Nivel {gamification.level} • {gamification.rank.title}
+                      </div>
+                      <div style={{ fontSize: '0.8rem', color: '#cbd5e1', fontWeight: 600 }}>
+                        🔥 Racha activa: {gamification.activeStreakDays} {gamification.activeStreakDays === 1 ? 'día' : 'días'}
+                      </div>
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      background: 'linear-gradient(135deg, #f59e0b 0%, #ea580c 100%)',
+                      color: '#ffffff',
+                      fontWeight: 900,
+                      fontSize: '0.88rem',
+                      padding: '5px 11px',
+                      borderRadius: '999px',
+                      boxShadow: '0 2px 10px rgba(245, 158, 11, 0.4)',
+                    }}
+                  >
+                    +{sessionSummary.earnedXp} XP ⚡
+                  </div>
+                </div>
+                <div style={{ width: '100%', height: '7px', background: '#090d14', borderRadius: '999px', overflow: 'hidden' }}>
+                  <div
+                    style={{
+                      width: `${gamification.levelProgressPercent}%`,
+                      height: '100%',
+                      background: 'linear-gradient(90deg, #fde047 0%, #f97316 100%)',
+                      borderRadius: '999px',
+                    }}
+                  />
+                </div>
+              </div>
+
               <div
                 style={{
                   display: 'inline-flex',
@@ -747,6 +804,59 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
                 <span>Volviendo al inicio automáticamente en <strong>{redirectSeconds}s</strong></span>
               </div>
             </div>
+
+            {/* Personal Records (PRs) Broken Card */}
+            {sessionSummary.prs && sessionSummary.prs.length > 0 && (
+              <div
+                style={{
+                  background: 'linear-gradient(135deg, rgba(234, 179, 8, 0.16) 0%, rgba(22, 27, 36, 0.95) 100%)',
+                  border: '1.5px solid rgba(234, 179, 8, 0.5)',
+                  borderRadius: '18px',
+                  padding: '16px',
+                  marginBottom: '20px',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                  <span style={{ fontSize: '1.35rem' }}>🏆</span>
+                  <h3 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 900, color: '#fde047' }}>
+                    ¡Nuevos Récords Personales ({sessionSummary.prs.length})!
+                  </h3>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {sessionSummary.prs.map((pr, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        background: 'rgba(15, 23, 42, 0.65)',
+                        borderRadius: '12px',
+                        padding: '10px 12px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        border: '1px solid rgba(234, 179, 8, 0.25)',
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontWeight: 800, fontSize: '0.88rem', color: '#ffffff' }}>
+                          {pr.exerciseName}
+                        </div>
+                        <div style={{ fontSize: '0.74rem', color: '#94a3b8' }}>
+                          {pr.isFirstTime
+                            ? 'Primer registro histórico de peso'
+                            : `Superaste tu récord anterior de ${pr.previousMaxWeightKg} kg`}
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontWeight: 900, fontSize: '0.95rem', color: '#fde047' }}>
+                          {pr.newMaxWeightKg} kg × {pr.repsAtMax}
+                        </div>
+                        <div style={{ fontSize: '0.68rem', fontWeight: 800, color: '#34d399' }}>+50 XP PR</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* 3 Metric Cards */}
             <div
@@ -1954,6 +2064,10 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
 
               const finalDurationSecs = finishSnapshotSeconds ?? elapsedSeconds;
 
+              // Detect PRs before saving or comparing with existing sessions
+              const detectedPrs = detectSessionPRs(activeWorkout, workoutSessions);
+              const earnedXpObj = calculateSessionEarnedXp(activeWorkout, detectedPrs.length);
+
               const finishedSession = finishActiveWorkout(undefined, shouldSync);
               const currentId = finishedSession?.id || activeWorkout.id;
 
@@ -1964,6 +2078,8 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
                 durationFormatted: formatTime(finalDurationSecs),
                 totalSets: totalSetsCount,
                 completedSets: completedSetsCount,
+                earnedXp: earnedXpObj.totalSessionXp,
+                prs: detectedPrs,
                 totalVolumeKg: (activeWorkout.exercises || []).reduce((acc, ex) => {
                   let exVol = 0;
                   (ex.sets || []).forEach((s) => {
