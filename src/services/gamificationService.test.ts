@@ -147,4 +147,40 @@ describe('gamificationService', () => {
     expect(state.completedDailyMissionsCount).toBeGreaterThanOrEqual(1);
     expect(state.unlockedAchievementsCount).toBeGreaterThanOrEqual(2);
   });
+
+  it('starts a newly registered user at Level 1 with 0 XP despite onboarding initial weight record', () => {
+    const state = computeGamificationState({
+      workoutSessions: [],
+      foodEntries: [],
+      weightRecords: [
+        {
+          id: 'weight-init-1794241000000',
+          date: '2026-11-09',
+          weightKg: 70,
+          heightCm: 175,
+          bmi: 22.9,
+          notes: 'Registro inicial de perfil',
+          createdAt: '2026-11-09T10:00:00Z',
+        },
+      ],
+      dailyActivities: [],
+      exercises: [],
+      profile: {
+        name: 'Test User',
+        birthDate: '1996-05-10',
+        gender: 'male',
+        height: 175,
+        initialWeight: 70,
+        targetWeight: 70,
+        createdAt: '2026-11-09T10:00:00Z',
+        updatedAt: '2026-11-09T10:00:00Z',
+      },
+      todayDateStr: '2026-11-09',
+    });
+
+    expect(state.level).toBe(1);
+    expect(state.totalXp).toBe(0);
+    expect(state.completedDailyMissionsCount).toBe(0);
+    expect(state.unlockedAchievementsCount).toBe(0);
+  });
 });

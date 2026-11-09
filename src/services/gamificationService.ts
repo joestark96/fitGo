@@ -399,8 +399,13 @@ export function computeGamificationState(params: {
     if (dStr === todayDateStr) todayMealsCount++;
   }
 
+  // Exclude automatic onboarding weight record ('weight-init-*') from gamification rewards
+  const manualWeightRecords = weightRecords.filter(
+    (wr) => !wr.id.startsWith('weight-init-') && wr.notes !== 'Registro inicial de perfil'
+  );
+
   const weightDates = new Set<string>();
-  for (const wr of weightRecords) {
+  for (const wr of manualWeightRecords) {
     const dStr = normalizeDateStr(wr.date);
     if (dStr) weightDates.add(dStr);
   }
@@ -525,12 +530,15 @@ export function computeGamificationState(params: {
     }
   }
 
-  const latestWeight = weightRecords.length > 0 ? weightRecords[0].weightKg : undefined;
+  const latestManualWeight =
+    manualWeightRecords.length > 0 ? manualWeightRecords[0].weightKg : undefined;
   const targetWeight = profile?.targetWeight;
   const reachedTargetWeight =
-    latestWeight !== undefined &&
+    manualWeightRecords.length >= 1 &&
+    completedSessions.length >= 1 &&
+    latestManualWeight !== undefined &&
     targetWeight !== undefined &&
-    Math.abs(latestWeight - targetWeight) <= 0.5;
+    Math.abs(latestManualWeight - targetWeight) <= 0.5;
 
   const achievements: AchievementBadge[] = [
     {
@@ -649,8 +657,8 @@ export function computeGamificationState(params: {
       description: 'Realiza 5 registros de seguimiento de peso e IMC.',
       icon: '⚖️',
       xpReward: 150,
-      unlocked: weightRecords.length >= 5,
-      progress: Math.min(5, weightRecords.length),
+      unlocked: manualWeightRecords.length >= 5,
+      progress: Math.min(5, manualWeightRecords.length),
       maxProgress: 5,
       category: 'body',
     },
@@ -769,7 +777,7 @@ export function computeGamificationState(params: {
   const prsXp = totalPRsCount * 50;
   const nutritionDaysXp = foodDates.size * 30;
   const mealsXp = foodEntries.length * 10;
-  const weightXp = weightRecords.length * 25;
+  const weightXp = manualWeightRecords.length * 25;
   const achievementsXp = achievements
     .filter((a) => a.unlocked)
     .reduce((acc, a) => acc + a.xpReward, 0);

@@ -172,13 +172,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     // If there are no weight records yet, create the first one using profile's initial weight if present
     const records = StorageService.getWeightRecords();
-    if (records.length === 0 && newProfile.targetWeight) {
+    const startWeight = newProfile.initialWeight ?? newProfile.targetWeight;
+    if (records.length === 0 && startWeight) {
       const initialRecord: WeightRecord = {
         id: 'weight-init-' + Date.now(),
         date: getLocalDateString(),
-        weightKg: newProfile.targetWeight,
+        weightKg: startWeight,
         heightCm: newProfile.height,
-        bmi: calculateBmi(newProfile.targetWeight, newProfile.height),
+        bmi: calculateBmi(startWeight, newProfile.height),
         notes: 'Registro inicial de perfil',
         createdAt: new Date().toISOString(),
       };
