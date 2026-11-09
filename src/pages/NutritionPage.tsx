@@ -42,6 +42,7 @@ import { useApp } from '../context/AppContext';
 import { FoodEntry, MealType, ActivityLevel, DailyActivity } from '../types';
 import { formatDateDDMMYYYY, getLocalDateString, addDaysToDateString } from '../services/storage';
 import { FoodEntryModal } from '../components/FoodEntryModal';
+import { DailyActivityModal } from '../components/DailyActivityModal';
 import { AppHeader } from '../components/AppHeader';
 
 export const NutritionPage: React.FC = () => {
@@ -54,6 +55,7 @@ export const NutritionPage: React.FC = () => {
     dailyActivities,
     saveDailyActivity,
     profile,
+    weightRecords,
   } = useApp();
 
   // Current selected date in YYYY-MM-DD (device local date, avoiding UTC shift)
@@ -581,45 +583,26 @@ export const NutritionPage: React.FC = () => {
           buttons={['Entendido']}
         />
 
-        {/* Activity & Steps Registration / Adjustment Alert */}
-        <IonAlert
+        {/* Interactive Activity & Steps Registration Modal */}
+        <DailyActivityModal
           isOpen={showActivityAlert}
-          onDidDismiss={() => setShowActivityAlert(false)}
-          header="Actividad & Pasos del Día"
-          subHeader={formatDateDDMMYYYY(selectedDate)}
-          message="Ingresa o ajusta los pasos y calorías quemadas totales del día marcadas por tu smartwatch o pulsera."
-          inputs={[
-            {
-              name: 'steps',
-              type: 'number',
-              placeholder: 'Pasos del día (ej. 8500)',
-              value: totalSteps > 0 ? String(totalSteps) : '',
-              min: 0,
-            },
-            {
-              name: 'caloriesBurned',
-              type: 'number',
-              placeholder: 'Calorías quemadas totales (kcal)',
-              value: totalCaloriesBurned > 0 ? String(totalCaloriesBurned) : '',
-              min: 0,
-            },
-          ]}
-          buttons={[
-            { text: 'Cancelar', role: 'cancel' },
-            {
-              text: 'Guardar',
-              handler: (data) => {
-                const sNum = parseInt(data.steps, 10);
-                const cNum = parseInt(data.caloriesBurned, 10);
-                saveDailyActivity({
-                  date: selectedDate,
-                  steps: !isNaN(sNum) && sNum >= 0 ? sNum : undefined,
-                  caloriesBurned: !isNaN(cNum) && cNum >= 0 ? cNum : undefined,
-                });
-                setToastMessage('Actividad y pasos del día actualizados 👟🔥');
-              },
-            },
-          ]}
+          onClose={() => setShowActivityAlert(false)}
+          selectedDate={selectedDate}
+          currentSteps={totalSteps}
+          currentCaloriesBurned={totalCaloriesBurned}
+          userWeightKg={
+            weightRecords.length > 0
+              ? weightRecords[0].weightKg
+              : profile?.initialWeight || profile?.targetWeight || 72
+          }
+          onSave={(steps, caloriesBurned) => {
+            saveDailyActivity({
+              date: selectedDate,
+              steps,
+              caloriesBurned,
+            });
+            setToastMessage('Actividad y pasos del día actualizados 👟🔥');
+          }}
         />
 
         {/* Toast */}

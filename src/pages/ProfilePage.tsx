@@ -31,18 +31,38 @@ import {
   barbellOutline,
   checkmarkCircleOutline,
   sparklesOutline,
+  cloudUploadOutline,
+  cloudDownloadOutline,
+  shareSocialOutline,
+  shieldCheckmarkOutline,
 } from 'ionicons/icons';
 import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
 import { useApp } from '../context/AppContext';
 import { Gender, UserProfile, APP_VERSION } from '../types';
-import { calculateAge, formatDateDDMMYYYY } from '../services/storage';
+import {
+  calculateAge,
+  formatDateDDMMYYYY,
+  getLocalDateString,
+  StorageService,
+  FitTrackBackupPayload,
+} from '../services/storage';
 import { DateInput } from '../components/DateInput';
 import { AppHeader } from '../components/AppHeader';
 import { GamificationModal } from '../components/GamificationModal';
 import { notificationService } from '../services/notificationService';
 
 export const ProfilePage: React.FC = () => {
-  const { profile, saveProfile, resetAllData, workoutSessions, weightRecords, gamification } = useApp();
+  const {
+    profile,
+    saveProfile,
+    resetAllData,
+    refreshData,
+    workoutSessions,
+    weightRecords,
+    routines,
+    foodEntries,
+    gamification,
+  } = useApp();
   const [gamificationModalTab, setGamificationModalTab] = useState<'missions' | 'achievements' | 'tonnage' | null>(null);
 
   const [name, setName] = useState('');
@@ -54,8 +74,111 @@ export const ProfilePage: React.FC = () => {
   const [weekStartDay, setWeekStartDay] = useState<number>(1);
 
   const [showToast, setShowToast] = useState(false);
+  const [toastText, setToastText] = useState('Perfil actualizado correctamente.');
   const [showResetAlert, setShowResetAlert] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [lastBackupAt, setLastBackupAt] = useState<string | null>(() =>
+    StorageService.getLastBackupDate()
+  );
+  const [pendingRestorePayload, setPendingRestorePayload] =
+    useState<Partial<FitTrackBackupPayload> | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const downloadBackupFile = (jsonString: string, fileName: string) => {
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportToDriveOrShare = async () => {
+    try {
+      const payload = StorageService.exportBackupData();
+      setLastBackupAt(payload.exportedAt);
+      const datePart = getLocalDateString();
+      const fileName = `fittrack-respaldo-${datePart}.json`;
+      const jsonString = JSON.stringify(payload, null, 2);
+      const file = new File([jsonString], fileName, { type: 'application/json' });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          title: `Respaldo FitTrack (${datePart})`,
+          text: 'Guarda este archivo en tu Google Drive para respaldar tu progreso de FitTrack.',
+          files: [file],
+        });
+        setToastText('☁️ Menú de respaldo abierto. Elige "Guardar en Drive".');
+        setShowToast(true);
+      } else {
+        downloadBackupFile(jsonString, fileName);
+        setToastText(`📥 Respaldo descargado (${fileName}). Puedes subirlo a tu Google Drive.`);
+        setShowToast(true);
+      }
+    } catch (err: any) {
+      if (err?.name !== 'AbortError') {
+        const payload = StorageService.exportBackupData();
+        const fileName = `fittrack-respaldo-${getLocalDateString()}.json`;
+        downloadBackupFile(JSON.stringify(payload, null, 2), fileName);
+        setToastText(`📥 Respaldo descargado (${fileName}).`);
+        setShowToast(true);
+      }
+    }
+  };
+
+  const handleDirectDownloadBackup = () => {
+    const payload = StorageService.exportBackupData();
+    setLastBackupAt(payload.exportedAt);
+    const fileName = `fittrack-respaldo-${getLocalDateString()}.json`;
+    downloadBackupFile(JSON.stringify(payload, null, 2), fileName);
+    setToastText(`📥 Archivo ${fileName} guardado correctamente.`);
+    setShowToast(true);
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text) as Partial<FitTrackBackupPayload>;
+      if (
+        !parsed ||
+        typeof parsed !== 'object' ||
+        (parsed.appName !== 'FitTrack' &&
+          !Array.isArray(parsed.workoutSessions) &&
+          !Array.isArray(parsed.routines))
+      ) {
+        setErrorMessage('El archivo seleccionado no es un respaldo válido de FitTrack.');
+        return;
+      }
+      setErrorMessage('');
+      setPendingRestorePayload(parsed);
+    } catch {
+      setErrorMessage('No se pudo leer el archivo JSON. Asegúrate de elegir un respaldo de FitTrack.');
+    } finally {
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const confirmRestoreBackup = async () => {
+    if (!pendingRestorePayload) return;
+    try {
+      await StorageService.importBackupData(pendingRestorePayload);
+      refreshData();
+      setLastBackupAt(StorageService.getLastBackupDate());
+      setPendingRestorePayload(null);
+      setToastText('✅ ¡Progreso restaurado exitosamente desde el respaldo!');
+      setShowToast(true);
+    } catch (err: any) {
+      setErrorMessage(err?.message || 'Error al restaurar el respaldo.');
+      setPendingRestorePayload(null);
+    }
+  };
 
   // Easter egg states: 12 taps on logo triggers Android notification
   const [tapCount, setTapCount] = useState(0);
@@ -160,6 +283,7 @@ export const ProfilePage: React.FC = () => {
 
     saveProfile(updatedProfile);
     setErrorMessage('');
+    setToastText('Perfil actualizado correctamente.');
     setShowToast(true);
   };
 
@@ -301,119 +425,754 @@ export const ProfilePage: React.FC = () => {
           </IonCard>
         )}
 
-        {/* Form Card */}
-        <IonCard style={{ margin: '0 0 20px', borderRadius: '16px' }}>
-          <IonCardHeader style={{ padding: '16px 16px 8px' }}>
-            <IonCardTitle style={{ fontSize: '1.1rem' }}>Datos Personales</IonCardTitle>
-          </IonCardHeader>
-          <IonCardContent style={{ padding: '0 16px 16px' }}>
-            <IonItem lines="full">
-              <IonLabel position="stacked" style={{ fontWeight: 600 }}>
-                Nombre completo *
-              </IonLabel>
-              <IonInput
-                value={name}
-                placeholder="Nombre"
-                onIonInput={(e) => setName(e.detail.value || '')}
-              />
-            </IonItem>
-
-            <DateInput
-              label="Fecha de nacimiento"
-              value={birthDate}
-              onChange={setBirthDate}
-              required
-            />
-
-            <IonItem lines="full">
-              <IonLabel position="stacked" style={{ fontWeight: 600 }}>
-                Género *
-              </IonLabel>
-              <IonSelect
-                value={gender}
-                interface="popover"
-                onIonChange={(e) => setGender(e.detail.value)}
+        {/* Modernized Personal Data Card */}
+        <IonCard
+          style={{
+            margin: '0 0 20px',
+            borderRadius: '22px',
+            background: 'var(--ion-card-background, rgba(15, 23, 42, 0.85))',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.22)',
+            overflow: 'hidden',
+          }}
+        >
+          {/* Card Header Banner */}
+          <div
+            style={{
+              padding: '16px 18px 14px',
+              background:
+                'linear-gradient(135deg, rgba(59, 130, 246, 0.14) 0%, rgba(99, 102, 241, 0.06) 100%)',
+              borderBottom: '1px solid rgba(255, 255, 255, 0.07)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '10px',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div
+                style={{
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: '12px',
+                  background: 'rgba(59, 130, 246, 0.2)',
+                  border: '1px solid rgba(59, 130, 246, 0.4)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '1.15rem',
+                }}
               >
-                <IonSelectOption value="male">Masculino</IonSelectOption>
-                <IonSelectOption value="female">Femenino</IonSelectOption>
-                <IonSelectOption value="other">Otro</IonSelectOption>
-                <IonSelectOption value="prefer_not_to_say">Prefiero no decir</IonSelectOption>
-              </IonSelect>
-            </IonItem>
-
-            <IonItem lines="full">
-              <IonLabel position="stacked" style={{ fontWeight: 600 }}>
-                Estatura (cm) *
-              </IonLabel>
-              <IonInput
-                type="number"
-                placeholder="175"
-                value={height}
-                onIonInput={(e) => setHeight(e.detail.value || '')}
-              />
-            </IonItem>
-
-            <IonItem lines="full">
-              <IonLabel position="stacked" style={{ fontWeight: 600 }}>
-                🎯 Peso Objetivo (kg)
-              </IonLabel>
-              <IonInput
-                type="number"
-                step="0.1"
-                placeholder="68.0"
-                value={targetWeight}
-                onIonInput={(e) => setTargetWeight(e.detail.value || '')}
-              />
-              <IonText color="medium" style={{ fontSize: '0.8rem', display: 'block', marginTop: '6px' }}>
-                Meta de peso para el cálculo de progreso e IMC
-              </IonText>
-            </IonItem>
-
-            <IonItem lines="full">
-              <IonLabel position="stacked" style={{ fontWeight: 600 }}>
-                ⚖️ Unidad de peso preferida
-              </IonLabel>
-              <IonSelect
-                value={preferredWeightUnit}
-                interface="popover"
-                onIonChange={(e) => setPreferredWeightUnit(e.detail.value as 'kg' | 'lb')}
+                🪪
+              </div>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: '1.05rem', color: 'var(--ion-text-color)' }}>
+                  Datos Personales
+                </div>
+                <div style={{ fontSize: '0.74rem', color: 'var(--ion-color-medium)' }}>
+                  Perfil biométrico, objetivos y preferencias
+                </div>
+              </div>
+            </div>
+            {calculatedAge !== null && (
+              <div
+                style={{
+                  background: 'rgba(59, 130, 246, 0.16)',
+                  border: '1px solid rgba(59, 130, 246, 0.35)',
+                  color: '#93c5fd',
+                  padding: '4px 10px',
+                  borderRadius: '999px',
+                  fontSize: '0.73rem',
+                  fontWeight: 800,
+                }}
               >
-                <IonSelectOption value="kg">Kilogramos (kg)</IonSelectOption>
-                <IonSelectOption value="lb">Libras (lb)</IonSelectOption>
-              </IonSelect>
-              <IonText color="medium" style={{ fontSize: '0.8rem', display: 'block', marginTop: '6px' }}>
-                Unidad predeterminada para registrar pesos en entrenamientos y rutinas
-              </IonText>
-            </IonItem>
+                🎂 {calculatedAge} años
+              </div>
+            )}
+          </div>
 
-            <IonItem lines="none">
-              <IonLabel position="stacked" style={{ fontWeight: 600 }}>
-                📅 Día de inicio de semana (para informes)
-              </IonLabel>
-              <IonSelect
-                value={weekStartDay}
-                interface="popover"
-                onIonChange={(e) => setWeekStartDay(Number(e.detail.value))}
+          <IonCardContent style={{ padding: '18px 16px' }}>
+            {/* 1. Nombre Completo */}
+            <div style={{ marginBottom: '16px' }}>
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  color: '#94a3b8',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                  marginBottom: '6px',
+                }}
               >
-                <IonSelectOption value={1}>Lunes (Recomendado)</IonSelectOption>
-                <IonSelectOption value={0}>Domingo</IonSelectOption>
-                <IonSelectOption value={2}>Martes</IonSelectOption>
-                <IonSelectOption value={3}>Miércoles</IonSelectOption>
-                <IonSelectOption value={4}>Jueves</IonSelectOption>
-                <IonSelectOption value={5}>Viernes</IonSelectOption>
-                <IonSelectOption value={6}>Sábado</IonSelectOption>
-              </IonSelect>
-              <IonText color="medium" style={{ fontSize: '0.8rem', display: 'block', marginTop: '6px' }}>
-                Define qué día comienza la semana en tus estadísticas y gráficas
-              </IonText>
-            </IonItem>
+                <span>👤 Nombre completo *</span>
+              </label>
+              <div
+                style={{
+                  background: 'rgba(15, 23, 42, 0.55)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  borderRadius: '14px',
+                  padding: '2px 12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                }}
+              >
+                <IonInput
+                  value={name}
+                  placeholder="Tu nombre o apodo"
+                  onIonInput={(e) => setName(e.detail.value || '')}
+                  style={{ fontWeight: 700, fontSize: '1rem' }}
+                />
+              </div>
+            </div>
 
-            <div style={{ marginTop: '18px' }}>
-              <IonButton expand="block" style={{ fontWeight: 700 }} onClick={handleSave}>
-                <IonIcon slot="start" icon={saveOutline} />
-                Guardar Cambios
+            {/* 2. Fecha de Nacimiento */}
+            <div
+              style={{
+                marginBottom: '16px',
+                background: 'rgba(15, 23, 42, 0.45)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                borderRadius: '14px',
+                padding: '4px 6px',
+              }}
+            >
+              <DateInput
+                label="🎂 Fecha de nacimiento"
+                value={birthDate}
+                onChange={setBirthDate}
+                required
+              />
+            </div>
+
+            {/* 3. Selector Interactivo de Género */}
+            <div style={{ marginBottom: '18px' }}>
+              <label
+                style={{
+                  display: 'block',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  color: '#94a3b8',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                  marginBottom: '8px',
+                }}
+              >
+                🧬 Género *
+              </label>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(2, 1fr)',
+                  gap: '8px',
+                }}
+              >
+                {[
+                  { value: 'male' as Gender, label: 'Masculino', emoji: '♂️', color: '#3b82f6' },
+                  { value: 'female' as Gender, label: 'Femenino', emoji: '♀️', color: '#ec4899' },
+                  { value: 'other' as Gender, label: 'Otro', emoji: '⚧️', color: '#8b5cf6' },
+                  {
+                    value: 'prefer_not_to_say' as Gender,
+                    label: 'Reservado',
+                    emoji: '🔒',
+                    color: '#64748b',
+                  },
+                ].map((opt) => {
+                  const active = gender === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setGender(opt.value)}
+                      style={{
+                        padding: '10px 12px',
+                        borderRadius: '13px',
+                        border: active
+                          ? `1.5px solid ${opt.color}`
+                          : '1px solid rgba(255, 255, 255, 0.08)',
+                        background: active
+                          ? `${opt.color}22`
+                          : 'rgba(15, 23, 42, 0.5)',
+                        color: active ? '#ffffff' : 'var(--ion-color-medium)',
+                        fontWeight: active ? 800 : 600,
+                        fontSize: '0.85rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                        cursor: 'pointer',
+                        transition: 'all 0.18s ease',
+                      }}
+                    >
+                      <span>{opt.emoji}</span>
+                      <span>{opt.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 4. Estatura & Peso Objetivo (2-Column Interactive Grid) */}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '12px',
+                marginBottom: '12px',
+              }}
+            >
+              {/* Estatura Card */}
+              <div
+                style={{
+                  background: 'rgba(15, 23, 42, 0.55)',
+                  border: '1px solid rgba(56, 189, 248, 0.22)',
+                  borderRadius: '16px',
+                  padding: '12px',
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: '0.73rem',
+                    fontWeight: 800,
+                    color: '#38bdf8',
+                    textTransform: 'uppercase',
+                    marginBottom: '6px',
+                  }}
+                >
+                  📏 Estatura *
+                </div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginBottom: '8px' }}>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    value={height}
+                    placeholder="175"
+                    onChange={(e) => setHeight(e.target.value)}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      outline: 'none',
+                      color: 'var(--ion-text-color)',
+                      fontWeight: 900,
+                      fontSize: '1.5rem',
+                      width: '72px',
+                    }}
+                  />
+                  <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--ion-color-medium)' }}>
+                    cm
+                  </span>
+                </div>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setHeight(String(Math.max(100, (parseFloat(height) || 170) - 1)))
+                    }
+                    style={{
+                      flex: 1,
+                      padding: '5px 0',
+                      borderRadius: '8px',
+                      background: 'rgba(255, 255, 255, 0.06)',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      color: 'var(--ion-text-color)',
+                      fontWeight: 800,
+                      fontSize: '0.8rem',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    -1
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setHeight(String(Math.min(250, (parseFloat(height) || 170) + 1)))
+                    }
+                    style={{
+                      flex: 1,
+                      padding: '5px 0',
+                      borderRadius: '8px',
+                      background: 'rgba(56, 189, 248, 0.15)',
+                      border: '1px solid rgba(56, 189, 248, 0.3)',
+                      color: '#7dd3fc',
+                      fontWeight: 800,
+                      fontSize: '0.8rem',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    +1
+                  </button>
+                </div>
+              </div>
+
+              {/* Peso Objetivo Card */}
+              <div
+                style={{
+                  background: 'rgba(15, 23, 42, 0.55)',
+                  border: '1px solid rgba(16, 185, 129, 0.25)',
+                  borderRadius: '16px',
+                  padding: '12px',
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: '0.73rem',
+                    fontWeight: 800,
+                    color: '#34d399',
+                    textTransform: 'uppercase',
+                    marginBottom: '6px',
+                  }}
+                >
+                  🎯 Peso Meta
+                </div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginBottom: '8px' }}>
+                  <input
+                    type="number"
+                    step="0.5"
+                    inputMode="decimal"
+                    value={targetWeight}
+                    placeholder="70"
+                    onChange={(e) => setTargetWeight(e.target.value)}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      outline: 'none',
+                      color: 'var(--ion-text-color)',
+                      fontWeight: 900,
+                      fontSize: '1.5rem',
+                      width: '72px',
+                    }}
+                  />
+                  <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--ion-color-medium)' }}>
+                    kg
+                  </span>
+                </div>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setTargetWeight(
+                        String(Math.max(35, Number(((parseFloat(targetWeight) || 70) - 0.5).toFixed(1))))
+                      )
+                    }
+                    style={{
+                      flex: 1,
+                      padding: '5px 0',
+                      borderRadius: '8px',
+                      background: 'rgba(255, 255, 255, 0.06)',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      color: 'var(--ion-text-color)',
+                      fontWeight: 800,
+                      fontSize: '0.8rem',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    -0.5
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setTargetWeight(
+                        String(Math.min(250, Number(((parseFloat(targetWeight) || 70) + 0.5).toFixed(1))))
+                      )
+                    }
+                    style={{
+                      flex: 1,
+                      padding: '5px 0',
+                      borderRadius: '8px',
+                      background: 'rgba(16, 185, 129, 0.15)',
+                      border: '1px solid rgba(16, 185, 129, 0.3)',
+                      color: '#6ee7b7',
+                      fontWeight: 800,
+                      fontSize: '0.8rem',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    +0.5
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Live Target BMI Preview Pill */}
+            {(() => {
+              const hNum = parseFloat(height);
+              const twNum = parseFloat(targetWeight);
+              if (!isNaN(hNum) && hNum >= 100 && !isNaN(twNum) && twNum >= 30) {
+                const targetBmi = twNum / Math.pow(hNum / 100, 2);
+                const healthyMin = (18.5 * Math.pow(hNum / 100, 2)).toFixed(0);
+                const healthyMax = (24.9 * Math.pow(hNum / 100, 2)).toFixed(0);
+                const isHealthy = targetBmi >= 18.5 && targetBmi <= 24.9;
+                return (
+                  <div
+                    style={{
+                      background: isHealthy
+                        ? 'rgba(16, 185, 129, 0.1)'
+                        : 'rgba(245, 158, 11, 0.1)',
+                      border: isHealthy
+                        ? '1px dashed rgba(16, 185, 129, 0.35)'
+                        : '1px dashed rgba(245, 158, 11, 0.35)',
+                      borderRadius: '12px',
+                      padding: '8px 12px',
+                      marginBottom: '18px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      fontSize: '0.76rem',
+                    }}
+                  >
+                    <span style={{ color: 'var(--ion-color-medium)', fontWeight: 600 }}>
+                      💡 Rango ideal para {hNum} cm:{' '}
+                      <strong style={{ color: 'var(--ion-text-color)' }}>
+                        {healthyMin} – {healthyMax} kg
+                      </strong>
+                    </span>
+                    <span
+                      style={{
+                        fontWeight: 800,
+                        color: isHealthy ? '#34d399' : '#fbbf24',
+                      }}
+                    >
+                      IMC Meta: {targetBmi.toFixed(1)}
+                    </span>
+                  </div>
+                );
+              }
+              return null;
+            })()}
+
+            {/* 5. Unidad de Peso Preferida (Segmented Toggle) */}
+            <div style={{ marginBottom: '18px' }}>
+              <label
+                style={{
+                  display: 'block',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  color: '#94a3b8',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                  marginBottom: '8px',
+                }}
+              >
+                ⚖️ Unidad de peso predeterminada
+              </label>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: '8px',
+                  background: 'rgba(15, 23, 42, 0.55)',
+                  padding: '5px',
+                  borderRadius: '14px',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                }}
+              >
+                {[
+                  { value: 'kg' as const, title: 'Kilogramos (kg)', sub: 'Sistema métrico' },
+                  { value: 'lb' as const, title: 'Libras (lb)', sub: 'Sistema imperial' },
+                ].map((u) => {
+                  const active = preferredWeightUnit === u.value;
+                  return (
+                    <button
+                      key={u.value}
+                      type="button"
+                      onClick={() => setPreferredWeightUnit(u.value)}
+                      style={{
+                        padding: '9px 10px',
+                        borderRadius: '10px',
+                        border: active
+                          ? '1px solid rgba(59, 130, 246, 0.5)'
+                          : '1px solid transparent',
+                        background: active
+                          ? 'linear-gradient(135deg, rgba(59, 130, 246, 0.28) 0%, rgba(37, 99, 235, 0.2) 100%)'
+                          : 'transparent',
+                        color: active ? '#ffffff' : 'var(--ion-color-medium)',
+                        cursor: 'pointer',
+                        textAlign: 'center',
+                        transition: 'all 0.18s ease',
+                      }}
+                    >
+                      <div style={{ fontWeight: 800, fontSize: '0.85rem' }}>{u.title}</div>
+                      <div style={{ fontSize: '0.68rem', opacity: 0.75 }}>{u.sub}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 6. Día de Inicio de Semana (Interactive Pill Selector) */}
+            <div style={{ marginBottom: '20px' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '8px',
+                }}
+              >
+                <label
+                  style={{
+                    fontSize: '0.78rem',
+                    fontWeight: 700,
+                    color: '#94a3b8',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                  }}
+                >
+                  📅 Inicio de semana (Informes)
+                </label>
+                <span style={{ fontSize: '0.7rem', color: 'var(--ion-color-medium)' }}>
+                  {weekStartDay === 1 ? '⭐ Recomendado' : 'Personalizado'}
+                </span>
+              </div>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(7, 1fr)',
+                  gap: '6px',
+                }}
+              >
+                {[
+                  { day: 1, short: 'Lun' },
+                  { day: 2, short: 'Mar' },
+                  { day: 3, short: 'Mié' },
+                  { day: 4, short: 'Jue' },
+                  { day: 5, short: 'Vie' },
+                  { day: 6, short: 'Sáb' },
+                  { day: 0, short: 'Dom' },
+                ].map((item) => {
+                  const active = weekStartDay === item.day;
+                  return (
+                    <button
+                      key={item.day}
+                      type="button"
+                      onClick={() => setWeekStartDay(item.day)}
+                      style={{
+                        padding: '9px 2px',
+                        borderRadius: '11px',
+                        fontWeight: 800,
+                        fontSize: '0.76rem',
+                        cursor: 'pointer',
+                        border: active
+                          ? '1.5px solid #3b82f6'
+                          : '1px solid rgba(255, 255, 255, 0.08)',
+                        background: active
+                          ? 'rgba(59, 130, 246, 0.25)'
+                          : 'rgba(15, 23, 42, 0.5)',
+                        color: active ? '#93c5fd' : 'var(--ion-color-medium)',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      {item.short}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Save Button */}
+            <IonButton
+              expand="block"
+              onClick={handleSave}
+              style={
+                {
+                  '--background': 'linear-gradient(135deg, #3b82f6 0%, #4f46e5 100%)',
+                  '--border-radius': '14px',
+                  '--box-shadow': '0 8px 20px rgba(59, 130, 246, 0.3)',
+                  fontWeight: 800,
+                  height: '50px',
+                  fontSize: '0.98rem',
+                } as React.CSSProperties
+              }
+            >
+              <IonIcon slot="start" icon={saveOutline} />
+              Guardar Cambios
+            </IonButton>
+          </IonCardContent>
+        </IonCard>
+
+        {/* Google Drive & Cloud Backup Card */}
+        <IonCard
+          style={{
+            margin: '0 0 20px',
+            borderRadius: '22px',
+            background: 'var(--ion-card-background, rgba(15, 23, 42, 0.85))',
+            border: '1px solid rgba(16, 185, 129, 0.25)',
+            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.22)',
+            overflow: 'hidden',
+          }}
+        >
+          <div
+            style={{
+              padding: '16px 18px 14px',
+              background:
+                'linear-gradient(135deg, rgba(16, 185, 129, 0.16) 0%, rgba(14, 165, 233, 0.08) 100%)',
+              borderBottom: '1px solid rgba(255, 255, 255, 0.07)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '10px',
+              flexWrap: 'wrap',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div
+                style={{
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: '12px',
+                  background: 'rgba(16, 185, 129, 0.2)',
+                  border: '1px solid rgba(16, 185, 129, 0.4)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '1.15rem',
+                }}
+              >
+                ☁️
+              </div>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: '1.03rem', color: 'var(--ion-text-color)' }}>
+                  Respaldo en Google Drive
+                </div>
+                <div style={{ fontSize: '0.73rem', color: 'var(--ion-color-medium)' }}>
+                  Guarda o restaura todo tu progreso e historial
+                </div>
+              </div>
+            </div>
+
+            <div
+              style={{
+                background: 'rgba(16, 185, 129, 0.18)',
+                border: '1px solid rgba(16, 185, 129, 0.4)',
+                color: '#6ee7b7',
+                padding: '4px 10px',
+                borderRadius: '999px',
+                fontSize: '0.68rem',
+                fontWeight: 800,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+              }}
+            >
+              <IonIcon icon={shieldCheckmarkOutline} />
+              Auto-Backup Android Activo
+            </div>
+          </div>
+
+          <IonCardContent style={{ padding: '16px' }}>
+            <p style={{ margin: '0 0 12px', fontSize: '0.82rem', color: 'var(--ion-color-medium)', lineHeight: 1.45 }}>
+              En Android, tu base de datos se incluye en la copia de seguridad automática del sistema en{' '}
+              <strong style={{ color: 'var(--ion-text-color)' }}>Google Drive</strong>. También puedes
+              guardar o restaurar una copia manual en cualquier momento:
+            </p>
+
+            {/* Summary of included items */}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(4, 1fr)',
+                gap: '8px',
+                marginBottom: '12px',
+              }}
+            >
+              {[
+                { label: 'Rutinas', val: routines.length, emoji: '📋' },
+                { label: 'Entrenos', val: workoutSessions.length, emoji: '🏋️' },
+                { label: 'Pesajes', val: weightRecords.length, emoji: '⚖️' },
+                { label: 'Comidas', val: foodEntries.length, emoji: '🍎' },
+              ].map((s) => (
+                <div
+                  key={s.label}
+                  style={{
+                    background: 'rgba(15, 23, 42, 0.55)',
+                    border: '1px solid rgba(255, 255, 255, 0.07)',
+                    borderRadius: '12px',
+                    padding: '8px 4px',
+                    textAlign: 'center',
+                  }}
+                >
+                  <div style={{ fontSize: '0.9rem' }}>{s.emoji}</div>
+                  <div style={{ fontWeight: 900, fontSize: '0.95rem', color: 'var(--ion-text-color)' }}>
+                    {s.val}
+                  </div>
+                  <div style={{ fontSize: '0.65rem', color: 'var(--ion-color-medium)', fontWeight: 600 }}>
+                    {s.label}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {lastBackupAt && (
+              <div
+                style={{
+                  fontSize: '0.74rem',
+                  color: '#6ee7b7',
+                  background: 'rgba(16, 185, 129, 0.1)',
+                  border: '1px dashed rgba(16, 185, 129, 0.3)',
+                  borderRadius: '10px',
+                  padding: '7px 10px',
+                  marginBottom: '12px',
+                  textAlign: 'center',
+                  fontWeight: 600,
+                }}
+              >
+                🕒 Último respaldo manual: {formatDateDDMMYYYY(lastBackupAt)} (
+                {new Date(lastBackupAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})
+              </div>
+            )}
+
+            {/* Primary Button: Share / Save to Google Drive */}
+            <IonButton
+              expand="block"
+              onClick={handleExportToDriveOrShare}
+              style={
+                {
+                  '--background': 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                  '--border-radius': '13px',
+                  fontWeight: 800,
+                  height: '46px',
+                  fontSize: '0.9rem',
+                  marginBottom: '8px',
+                } as React.CSSProperties
+              }
+            >
+              <IonIcon slot="start" icon={shareSocialOutline} />
+              Guardar en Google Drive / Compartir
+            </IonButton>
+
+            {/* Secondary Row: Direct Download & Restore from Drive/File */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+              <IonButton
+                expand="block"
+                fill="outline"
+                color="primary"
+                onClick={handleDirectDownloadBackup}
+                style={{ '--border-radius': '12px', fontWeight: 700, fontSize: '0.78rem' } as React.CSSProperties}
+              >
+                <IonIcon slot="start" icon={cloudDownloadOutline} />
+                Descargar .JSON
+              </IonButton>
+
+              <IonButton
+                expand="block"
+                fill="outline"
+                color="secondary"
+                onClick={() => fileInputRef.current?.click()}
+                style={{ '--border-radius': '12px', fontWeight: 700, fontSize: '0.78rem' } as React.CSSProperties}
+              >
+                <IonIcon slot="start" icon={cloudUploadOutline} />
+                Restaurar Copia
               </IonButton>
             </div>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".json,application/json"
+              style={{ display: 'none' }}
+              onChange={handleFileChange}
+            />
           </IonCardContent>
         </IonCard>
 
@@ -444,9 +1203,30 @@ export const ProfilePage: React.FC = () => {
         <IonToast
           isOpen={showToast}
           onDidDismiss={() => setShowToast(false)}
-          message="Perfil actualizado correctamente."
-          duration={2000}
+          message={toastText}
+          duration={2400}
           color="success"
+        />
+
+        <IonAlert
+          isOpen={Boolean(pendingRestorePayload)}
+          onDidDismiss={() => setPendingRestorePayload(null)}
+          header="¿Restaurar Respaldo?"
+          subHeader={
+            pendingRestorePayload?.exportedAt
+              ? `Exportado el ${formatDateDDMMYYYY(pendingRestorePayload.exportedAt)}`
+              : undefined
+          }
+          message={`Se restaurará el perfil de "${pendingRestorePayload?.profile?.name || 'Usuario'}" con ${pendingRestorePayload?.routines?.length || 0} rutinas, ${pendingRestorePayload?.workoutSessions?.length || 0} entrenamientos y ${pendingRestorePayload?.weightRecords?.length || 0} registros de peso.`}
+          buttons={[
+            { text: 'Cancelar', role: 'cancel' },
+            {
+              text: 'Restaurar Ahora',
+              handler: () => {
+                confirmRestoreBackup();
+              },
+            },
+          ]}
         />
 
         <IonToast

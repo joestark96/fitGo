@@ -10,8 +10,23 @@ import {
   ActivityLevel,
   CalorieRecommendation,
   DailyActivity,
+  APP_VERSION,
 } from '../types';
 import { sqliteService } from './sqliteService';
+
+export interface FitTrackBackupPayload {
+  appName: 'FitTrack';
+  version: string;
+  exportedAt: string;
+  profile: UserProfile | null;
+  routines: Routine[];
+  customExercises: ExerciseDefinition[];
+  weightRecords: WeightRecord[];
+  workoutSessions: WorkoutSession[];
+  foodEntries: FoodEntry[];
+  dailyActivities: DailyActivity[];
+  activityLevel: ActivityLevel;
+}
 
 const STORAGE_KEYS = {
   PROFILE: 'fittrack_user_profile',
@@ -23,6 +38,7 @@ const STORAGE_KEYS = {
   ACTIVITY_LEVEL: 'fittrack_user_activity_level',
   ACTIVE_WORKOUT: 'fittrack_active_workout',
   DAILY_ACTIVITIES: 'fittrack_daily_activities',
+  LAST_BACKUP_AT: 'fittrack_last_backup_at',
 };
 
 export { DEFAULT_EXERCISES };
@@ -896,6 +912,120 @@ export const StorageService = {
     } catch (e) {
       console.error('Error saving active workout:', e);
     }
+  },
+
+  // Backup & Restore Utilities (Google Drive / File Export & Import)
+  getLastBackupDate(): string | null {
+    try {
+      return localStorage.getItem(STORAGE_KEYS.LAST_BACKUP_AT);
+    } catch {
+      return null;
+    }
+  },
+
+  exportBackupData(): FitTrackBackupPayload {
+    const nowIso = new Date().toISOString();
+    try {
+      localStorage.setItem(STORAGE_KEYS.LAST_BACKUP_AT, nowIso);
+    } catch {
+      // ignore
+    }
+    const allExercises = this.getExercises();
+    const defaultIds = new Set(DEFAULT_EXERCISES.map((d) => d.id));
+    const customExercises = allExercises.filter((ex) => !defaultIds.has(ex.id));
+
+    return {
+      appName: 'FitTrack',
+      version: APP_VERSION,
+      exportedAt: nowIso,
+      profile: this.getUserProfile(),
+      routines: this.getRoutines(),
+      customExercises,
+      weightRecords: this.getWeightRecords(),
+      workoutSessions: this.getWorkoutSessions(),
+      foodEntries: this.getFoodEntries(),
+      dailyActivities: this.getDailyActivities(),
+      activityLevel: this.getActivityLevel(),
+    };
+  },
+
+  async importBackupData(payload: Partial<FitTrackBackupPayload>): Promise<boolean> {
+    if (!payload || typeof payload !== 'object') {
+      throw new Error('El archivo de respaldo no es válido.');
+    }
+    const hasValidKeys =
+      payload.appName === 'FitTrack' ||
+      payload.profile !== undefined ||
+      Array.isArray(payload.workoutSessions) ||
+      Array.isArray(payload.routines) ||
+      Array.isArray(payload.weightRecords);
+
+    if (!hasValidKeys) {
+      throw new Error('El archivo seleccionado no pertenece a un respaldo de FitTrack.');
+    }
+
+    // Clear existing SQLite tables before re-hydrating
+    await sqliteService.clearAllData().catch((e) => console.warn('SQLite clear err:', e));
+
+    if (payload.profile) {
+      localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(payload.profile));
+      await sqliteService.saveProfile(payload.profile).catch(() => {});
+    }
+
+    if (Array.isArray(payload.customExercises) && payload.customExercises.length > 0) {
+      const defaultIds = new Set(DEFAULT_EXERCISES.map((d) => d.id));
+      const mergedExercises = [
+        ...DEFAULT_EXERCISES,
+        ...payload.customExercises.filter((c) => !defaultIds.has(c.id)),
+      ];
+      localStorage.setItem(STORAGE_KEYS.EXERCISES, JSON.stringify(mergedExercises));
+      for (const ex of payload.customExercises) {
+        await sqliteService.saveExercise(ex).catch(() => {});
+      }
+    }
+
+    if (Array.isArray(payload.routines)) {
+      localStorage.setItem(STORAGE_KEYS.ROUTINES, JSON.stringify(payload.routines));
+      for (const r of payload.routines) {
+        await sqliteService.saveRoutine(r).catch(() => {});
+      }
+    }
+
+    if (Array.isArray(payload.weightRecords)) {
+      localStorage.setItem(STORAGE_KEYS.WEIGHT_RECORDS, JSON.stringify(payload.weightRecords));
+      for (const w of payload.weightRecords) {
+        await sqliteService.saveWeightRecord(w).catch(() => {});
+      }
+    }
+
+    if (Array.isArray(payload.workoutSessions)) {
+      localStorage.setItem(STORAGE_KEYS.WORKOUT_SESSIONS, JSON.stringify(payload.workoutSessions));
+      for (const s of payload.workoutSessions) {
+        await sqliteService.saveWorkoutSession(s).catch(() => {});
+      }
+    }
+
+    if (Array.isArray(payload.foodEntries)) {
+      localStorage.setItem(STORAGE_KEYS.FOOD_ENTRIES, JSON.stringify(payload.foodEntries));
+      for (const f of payload.foodEntries) {
+        await sqliteService.saveFoodEntry(f).catch(() => {});
+      }
+    }
+
+    if (Array.isArray(payload.dailyActivities)) {
+      localStorage.setItem(STORAGE_KEYS.DAILY_ACTIVITIES, JSON.stringify(payload.dailyActivities));
+      for (const a of payload.dailyActivities) {
+        await sqliteService.saveDailyActivity(a).catch(() => {});
+      }
+    }
+
+    if (payload.activityLevel) {
+      localStorage.setItem(STORAGE_KEYS.ACTIVITY_LEVEL, payload.activityLevel);
+      await sqliteService.saveActivityLevel(payload.activityLevel).catch(() => {});
+    }
+
+    localStorage.setItem(STORAGE_KEYS.LAST_BACKUP_AT, new Date().toISOString());
+    return true;
   },
 
   // Clear data utility

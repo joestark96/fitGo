@@ -423,5 +423,29 @@ describe('Storage and Fitness Calculations', () => {
       expect(saved?.exercises[0].setsConfig?.[0].targetWeightKg).toBe(50);
       expect(saved?.exercises[0].setsConfig?.[2].targetWeightKg).toBe(70);
     });
+
+    it('exports full backup payload and restores all data via importBackupData', async () => {
+      StorageService.saveUserProfile({
+        name: 'Alfonso Backup',
+        birthDate: '1996-04-26',
+        gender: 'male',
+        height: 185,
+        targetWeight: 81,
+        createdAt: '2026-11-09T10:00:00Z',
+        updatedAt: '2026-11-09T10:00:00Z',
+      });
+
+      const backup = StorageService.exportBackupData();
+      expect(backup.appName).toBe('FitTrack');
+      expect(backup.profile?.name).toBe('Alfonso Backup');
+      expect(StorageService.getLastBackupDate()).toBeTruthy();
+
+      StorageService.clearAllData();
+      expect(StorageService.getUserProfile()).toBeNull();
+
+      await StorageService.importBackupData(backup);
+      expect(StorageService.getUserProfile()?.name).toBe('Alfonso Backup');
+      expect(StorageService.getUserProfile()?.height).toBe(185);
+    });
   });
 });
