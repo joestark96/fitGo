@@ -35,19 +35,19 @@ interface DailyActivityModalProps {
 }
 
 const STEP_PRESETS = [
-  { label: 'Ligero', steps: 3000, emoji: '🚶' },
-  { label: 'Misión XP', steps: 5000, emoji: '🎯' },
-  { label: 'Activo', steps: 8000, emoji: '🏃' },
-  { label: 'Élite', steps: 10000, emoji: '🔥' },
-  { label: 'Atleta', steps: 15000, emoji: '⚡' },
+  { label: 'Ligero', steps: 3000 },
+  { label: 'Misión XP', steps: 5000 },
+  { label: 'Activo', steps: 8000 },
+  { label: 'Élite', steps: 10000 },
+  { label: 'Atleta', steps: 15000 },
 ];
 
 const WORKOUT_BURN_PRESETS = [
-  { label: 'Caminata 30m', kcal: 140, emoji: '🚶' },
-  { label: 'Pesas 45m', kcal: 250, emoji: '🏋️' },
-  { label: 'Cardio 30m', kcal: 300, emoji: '🏃' },
-  { label: 'Ciclismo', kcal: 280, emoji: '🚴' },
-  { label: 'HIIT Intenso', kcal: 420, emoji: '🔥' },
+  { label: 'Caminata 30m', kcal: 140 },
+  { label: 'Pesas 45m', kcal: 250 },
+  { label: 'Cardio 30m', kcal: 300 },
+  { label: 'Ciclismo', kcal: 280 },
+  { label: 'HIIT Intenso', kcal: 420 },
 ];
 
 export const DailyActivityModal: React.FC<DailyActivityModalProps> = ({
@@ -145,7 +145,8 @@ export const DailyActivityModal: React.FC<DailyActivityModalProps> = ({
         >
           <IonTitle style={{ fontWeight: 800, fontSize: '1.08rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span>👟 Actividad & Pasos</span>
+              <IonIcon icon={footstepsOutline} color="primary" />
+              <span>Actividad & Pasos</span>
               <IonBadge
                 color="primary"
                 style={{
@@ -577,7 +578,7 @@ export const DailyActivityModal: React.FC<DailyActivityModalProps> = ({
                       : '1px solid rgba(255, 255, 255, 0.1)',
                   }}
                 >
-                  {preset.emoji} {preset.label} ({(preset.steps / 1000).toFixed(0)}k)
+                  {preset.label} ({(preset.steps / 1000).toFixed(0)}k)
                 </button>
               );
             })}
@@ -595,8 +596,17 @@ export const DailyActivityModal: React.FC<DailyActivityModalProps> = ({
               border: '1px solid rgba(255, 255, 255, 0.08)',
             }}
           >
-            <span style={{ fontSize: '0.8rem', color: 'var(--ion-color-medium)', fontWeight: 600 }}>
-              ⌚ Pasos exactos:
+            <span
+              style={{
+                fontSize: '0.8rem',
+                color: 'var(--ion-color-medium)',
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+            >
+              <IonIcon icon={watchOutline} /> Pasos exactos:
             </span>
             <input
               type="number"
@@ -747,7 +757,7 @@ export const DailyActivityModal: React.FC<DailyActivityModalProps> = ({
                     border: '1px solid rgba(239, 68, 68, 0.3)',
                   }}
                 >
-                  {act.emoji} {act.label} (+{act.kcal})
+                  {act.label} (+{act.kcal})
                 </button>
               ))}
             </div>

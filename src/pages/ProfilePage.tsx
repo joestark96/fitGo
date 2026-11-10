@@ -35,6 +35,9 @@ import {
   cloudDownloadOutline,
   shareSocialOutline,
   shieldCheckmarkOutline,
+  personOutline,
+  cloudOutline,
+  searchOutline,
 } from 'ionicons/icons';
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
@@ -117,15 +120,15 @@ export const ProfilePage: React.FC = () => {
   ) => {
     const sizeKb = Math.max(1, Math.round(JSON.stringify(payload).length / 1024));
     return (
-      `📄 Archivo: ${fileName} (~${sizeKb} KB)\n` +
-      `📍 Destino: ${savedLocation}\n\n` +
-      `📦 Datos incluidos en este respaldo:\n` +
-      `• 👤 Perfil: ${payload.profile?.name || 'Sin nombre'}\n` +
-      `• 📋 Rutinas: ${payload.routines.length}\n` +
-      `• 🏋️ Entrenamientos: ${payload.workoutSessions.length}\n` +
-      `• ⚖️ Registros de peso: ${payload.weightRecords.length}\n` +
-      `• 🍎 Registros de nutrición: ${payload.foodEntries.length}\n` +
-      `• 👟 Días de pasos/actividad: ${payload.dailyActivities.length}`
+      `Archivo: ${fileName} (~${sizeKb} KB)\n` +
+      `Destino: ${savedLocation}\n\n` +
+      `Datos incluidos en este respaldo:\n` +
+      `• Perfil: ${payload.profile?.name || 'Sin nombre'}\n` +
+      `• Rutinas: ${payload.routines.length}\n` +
+      `• Entrenamientos: ${payload.workoutSessions.length}\n` +
+      `• Registros de peso: ${payload.weightRecords.length}\n` +
+      `• Registros de nutrición: ${payload.foodEntries.length}\n` +
+      `• Días de pasos/actividad: ${payload.dailyActivities.length}`
     );
   };
 
@@ -162,7 +165,7 @@ export const ProfilePage: React.FC = () => {
 
         setBackupVerificationInfo({
           isOpen: true,
-          title: '✅ Respaldo Generado con Éxito',
+          title: 'Respaldo Generado con Éxito',
           subHeader: `${formatDateDDMMYYYY(payload.exportedAt)} • ${new Date(payload.exportedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
           message: buildBackupSummaryText(
             payload,
@@ -194,7 +197,7 @@ export const ProfilePage: React.FC = () => {
       }
       setBackupVerificationInfo({
         isOpen: true,
-        title: '✅ Respaldo Guardado con Éxito',
+        title: 'Respaldo Guardado con Éxito',
         subHeader: `${formatDateDDMMYYYY(payload.exportedAt)} • ${new Date(payload.exportedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
         message: buildBackupSummaryText(payload, fileName, 'Carpeta de Descargas / Google Drive'),
       });
@@ -203,7 +206,7 @@ export const ProfilePage: React.FC = () => {
         downloadBackupFile(jsonString, fileName);
         setBackupVerificationInfo({
           isOpen: true,
-          title: '✅ Respaldo Descargado',
+          title: 'Respaldo Descargado',
           subHeader: `${formatDateDDMMYYYY(payload.exportedAt)}`,
           message: buildBackupSummaryText(payload, fileName, 'Carpeta de Descargas del dispositivo'),
         });
@@ -255,7 +258,7 @@ export const ProfilePage: React.FC = () => {
 
         setBackupVerificationInfo({
           isOpen: true,
-          title: '📥 Archivo .JSON Guardado',
+          title: 'Archivo .JSON Guardado',
           subHeader: `${formatDateDDMMYYYY(payload.exportedAt)} • ${new Date(payload.exportedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
           message: buildBackupSummaryText(payload, fileName, savedPath),
         });
@@ -268,7 +271,7 @@ export const ProfilePage: React.FC = () => {
     downloadBackupFile(jsonString, fileName);
     setBackupVerificationInfo({
       isOpen: true,
-      title: '📥 Archivo .JSON Descargado',
+      title: 'Archivo .JSON Descargado',
       subHeader: `${formatDateDDMMYYYY(payload.exportedAt)} • ${new Date(payload.exportedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
       message: buildBackupSummaryText(payload, fileName, `Descargas/${fileName}`),
     });
@@ -294,20 +297,20 @@ export const ProfilePage: React.FC = () => {
     const sizeKb = Math.max(1, Math.round(JSON.stringify(currentPayload).length / 1024));
     setBackupVerificationInfo({
       isOpen: true,
-      title: '🔍 Diagnóstico de tu Respaldo',
+      title: 'Diagnóstico de tu Respaldo',
       subHeader: lastDate
         ? `Último respaldo: ${formatDateDDMMYYYY(lastDate)} (${new Date(lastDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})`
         : 'Aún no has exportado un respaldo manual',
       message:
-        `🛡️ Auto-Backup Android (Google Drive): ACTIVO\n` +
-        `💾 Copia interna en teléfono: ${nativeSavedExists || lastDate ? '✅ VERIFICADA (' + sizeKb + ' KB)' : 'Pendiente de primer guardado'}\n\n` +
-        `📊 Datos actuales listos para respaldar:\n` +
-        `• 👤 Perfil: ${currentPayload.profile?.name || 'Sin nombre'}\n` +
-        `• ⚡ Nivel: Nv.${gamification.level} (${gamification.totalXp} XP)\n` +
-        `• 📋 Rutinas: ${currentPayload.routines.length}\n` +
-        `• 🏋️ Entrenamientos: ${currentPayload.workoutSessions.length}\n` +
-        `• ⚖️ Registros de peso: ${currentPayload.weightRecords.length}\n` +
-        `• 🍎 Registros de nutrición: ${currentPayload.foodEntries.length}`,
+        `Auto-Backup Android (Google Drive): ACTIVO\n` +
+        `Copia interna en teléfono: ${nativeSavedExists || lastDate ? 'VERIFICADA (' + sizeKb + ' KB)' : 'Pendiente de primer guardado'}\n\n` +
+        `Datos actuales listos para respaldar:\n` +
+        `• Perfil: ${currentPayload.profile?.name || 'Sin nombre'}\n` +
+        `• Nivel: Nv.${gamification.level} (${gamification.totalXp} XP)\n` +
+        `• Rutinas: ${currentPayload.routines.length}\n` +
+        `• Entrenamientos: ${currentPayload.workoutSessions.length}\n` +
+        `• Registros de peso: ${currentPayload.weightRecords.length}\n` +
+        `• Registros de nutrición: ${currentPayload.foodEntries.length}`,
     });
   };
 
@@ -544,10 +547,10 @@ export const ProfilePage: React.FC = () => {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    fontSize: '1.65rem',
+                    fontSize: '1.5rem',
                   }}
                 >
-                  {gamification.rank.icon}
+                  <IonIcon icon={trophyOutline} />
                 </div>
                 <div>
                   <div style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.8px', opacity: 0.9 }}>
@@ -560,7 +563,7 @@ export const ProfilePage: React.FC = () => {
               </div>
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontSize: '0.85rem', fontWeight: 800 }}>
-                  🏆 {gamification.unlockedAchievementsCount}/{gamification.achievements.length}
+                  {gamification.unlockedAchievementsCount}/{gamification.achievements.length} Logros
                 </div>
                 <div style={{ fontSize: '0.72rem', opacity: 0.85 }}>Ver Trofeos →</div>
               </div>
@@ -634,9 +637,10 @@ export const ProfilePage: React.FC = () => {
                   alignItems: 'center',
                   justifyContent: 'center',
                   fontSize: '1.15rem',
+                  color: '#60a5fa',
                 }}
               >
-                🪪
+                <IonIcon icon={personOutline} />
               </div>
               <div>
                 <div style={{ fontWeight: 800, fontSize: '1.05rem', color: 'var(--ion-text-color)' }}>
@@ -659,7 +663,7 @@ export const ProfilePage: React.FC = () => {
                   fontWeight: 800,
                 }}
               >
-                🎂 {calculatedAge} años
+                {calculatedAge} años
               </div>
             )}
           </div>
@@ -680,7 +684,7 @@ export const ProfilePage: React.FC = () => {
                   marginBottom: '6px',
                 }}
               >
-                <span>👤 Nombre completo *</span>
+                <span>Nombre completo *</span>
               </label>
               <div
                 style={{
@@ -712,7 +716,7 @@ export const ProfilePage: React.FC = () => {
               }}
             >
               <DateInput
-                label="🎂 Fecha de nacimiento"
+                label="Fecha de nacimiento"
                 value={birthDate}
                 onChange={setBirthDate}
                 required
@@ -732,7 +736,7 @@ export const ProfilePage: React.FC = () => {
                   marginBottom: '8px',
                 }}
               >
-                🧬 Género *
+                Género *
               </label>
               <div
                 style={{
@@ -742,13 +746,12 @@ export const ProfilePage: React.FC = () => {
                 }}
               >
                 {[
-                  { value: 'male' as Gender, label: 'Masculino', emoji: '♂️', color: '#3b82f6' },
-                  { value: 'female' as Gender, label: 'Femenino', emoji: '♀️', color: '#ec4899' },
-                  { value: 'other' as Gender, label: 'Otro', emoji: '⚧️', color: '#8b5cf6' },
+                  { value: 'male' as Gender, label: 'Masculino', color: '#3b82f6' },
+                  { value: 'female' as Gender, label: 'Femenino', color: '#ec4899' },
+                  { value: 'other' as Gender, label: 'Otro', color: '#8b5cf6' },
                   {
                     value: 'prefer_not_to_say' as Gender,
                     label: 'Reservado',
-                    emoji: '🔒',
                     color: '#64748b',
                   },
                 ].map((opt) => {
@@ -778,7 +781,6 @@ export const ProfilePage: React.FC = () => {
                         transition: 'all 0.18s ease',
                       }}
                     >
-                      <span>{opt.emoji}</span>
                       <span>{opt.label}</span>
                     </button>
                   );
@@ -813,7 +815,7 @@ export const ProfilePage: React.FC = () => {
                     marginBottom: '6px',
                   }}
                 >
-                  📏 Estatura *
+                  Estatura *
                 </div>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginBottom: '8px' }}>
                   <input
@@ -896,7 +898,7 @@ export const ProfilePage: React.FC = () => {
                     marginBottom: '6px',
                   }}
                 >
-                  🎯 Peso Meta
+                  Peso Meta
                 </div>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginBottom: '8px' }}>
                   <input
@@ -995,7 +997,7 @@ export const ProfilePage: React.FC = () => {
                     }}
                   >
                     <span style={{ color: 'var(--ion-color-medium)', fontWeight: 600 }}>
-                      💡 Rango ideal para {hNum} cm:{' '}
+                      Rango ideal para {hNum} cm:{' '}
                       <strong style={{ color: 'var(--ion-text-color)' }}>
                         {healthyMin} – {healthyMax} kg
                       </strong>
@@ -1027,7 +1029,7 @@ export const ProfilePage: React.FC = () => {
                   marginBottom: '8px',
                 }}
               >
-                ⚖️ Unidad de peso predeterminada
+                Unidad de peso predeterminada
               </label>
               <div
                 style={{
@@ -1092,10 +1094,10 @@ export const ProfilePage: React.FC = () => {
                     letterSpacing: '0.5px',
                   }}
                 >
-                  📅 Inicio de semana (Informes)
+                  Inicio de semana (Informes)
                 </label>
                 <span style={{ fontSize: '0.7rem', color: 'var(--ion-color-medium)' }}>
-                  {weekStartDay === 1 ? '⭐ Recomendado' : 'Personalizado'}
+                  {weekStartDay === 1 ? 'Recomendado' : 'Personalizado'}
                 </span>
               </div>
               <div
@@ -1200,9 +1202,10 @@ export const ProfilePage: React.FC = () => {
                   alignItems: 'center',
                   justifyContent: 'center',
                   fontSize: '1.15rem',
+                  color: '#34d399',
                 }}
               >
-                ☁️
+                <IonIcon icon={cloudOutline} />
               </div>
               <div>
                 <div style={{ fontWeight: 800, fontSize: '1.03rem', color: 'var(--ion-text-color)' }}>
@@ -1250,10 +1253,10 @@ export const ProfilePage: React.FC = () => {
               }}
             >
               {[
-                { label: 'Rutinas', val: routines.length, emoji: '📋' },
-                { label: 'Entrenos', val: workoutSessions.length, emoji: '🏋️' },
-                { label: 'Pesajes', val: weightRecords.length, emoji: '⚖️' },
-                { label: 'Comidas', val: foodEntries.length, emoji: '🍎' },
+                { label: 'Rutinas', val: routines.length },
+                { label: 'Entrenos', val: workoutSessions.length },
+                { label: 'Pesajes', val: weightRecords.length },
+                { label: 'Comidas', val: foodEntries.length },
               ].map((s) => (
                 <div
                   key={s.label}
@@ -1265,8 +1268,7 @@ export const ProfilePage: React.FC = () => {
                     textAlign: 'center',
                   }}
                 >
-                  <div style={{ fontSize: '0.9rem' }}>{s.emoji}</div>
-                  <div style={{ fontWeight: 900, fontSize: '0.95rem', color: 'var(--ion-text-color)' }}>
+                  <div style={{ fontWeight: 900, fontSize: '1rem', color: 'var(--ion-text-color)' }}>
                     {s.val}
                   </div>
                   <div style={{ fontSize: '0.65rem', color: 'var(--ion-color-medium)', fontWeight: 600 }}>
@@ -1290,7 +1292,7 @@ export const ProfilePage: React.FC = () => {
                   fontWeight: 600,
                 }}
               >
-                🕒 Último respaldo manual: {formatDateDDMMYYYY(lastBackupAt)} (
+                Último respaldo manual: {formatDateDDMMYYYY(lastBackupAt)} (
                 {new Date(lastBackupAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})
               </div>
             )}
@@ -1359,7 +1361,8 @@ export const ProfilePage: React.FC = () => {
                 gap: '6px',
               }}
             >
-              <span>🔍 Verificar estado y contenido de mi respaldo</span>
+              <IonIcon icon={searchOutline} />
+              <span>Verificar estado y contenido de mi respaldo</span>
             </button>
 
             <input

@@ -37,6 +37,7 @@ import {
   fastFoodOutline,
   footstepsOutline,
   barbellOutline,
+  watchOutline,
 } from 'ionicons/icons';
 import { useApp } from '../context/AppContext';
 import { FoodEntry, MealType, ActivityLevel, DailyActivity } from '../types';
@@ -114,11 +115,11 @@ export const NutritionPage: React.FC = () => {
 
   const isToday = selectedDate === getLocalDateString();
 
-  const mealConfig: { type: MealType; title: string; icon: string; emoji: string }[] = [
-    { type: 'desayuno', title: 'Desayuno', icon: cafeOutline, emoji: '🌅' },
-    { type: 'almuerzo', title: 'Almuerzo', icon: restaurantOutline, emoji: '🍽️' },
-    { type: 'cena', title: 'Cena', icon: moonOutline, emoji: '🌙' },
-    { type: 'snack', title: 'Snacks / Colación', icon: fastFoodOutline, emoji: '🥪' },
+  const mealConfig: { type: MealType; title: string; icon: string }[] = [
+    { type: 'desayuno', title: 'Desayuno', icon: cafeOutline },
+    { type: 'almuerzo', title: 'Almuerzo', icon: restaurantOutline },
+    { type: 'cena', title: 'Cena', icon: moonOutline },
+    { type: 'snack', title: 'Snacks / Colación', icon: fastFoodOutline },
   ];
 
   return (
@@ -315,7 +316,8 @@ export const NutritionPage: React.FC = () => {
                 fontWeight: 600,
               }}
             >
-              <span>⌚ Toca aquí para registrar calorías quemadas y pasos (Smartwatch)</span>
+              <IonIcon icon={watchOutline} style={{ fontSize: '0.9rem' }} />
+              <span>Toca aquí para registrar calorías quemadas y pasos (Smartwatch)</span>
             </div>
 
             {/* Visual Progress Bar */}
@@ -404,7 +406,7 @@ export const NutritionPage: React.FC = () => {
               </IonBadge>
               {profile?.targetWeight && (
                 <IonBadge color="warning" style={{ padding: '4px 8px' }}>
-                  🎯 Peso objetivo: {profile.targetWeight} kg
+                  Peso objetivo: {profile.targetWeight} kg
                 </IonBadge>
               )}
             </div>
@@ -420,11 +422,11 @@ export const NutritionPage: React.FC = () => {
                 onIonChange={(e) => setActivityLevel(e.detail.value as ActivityLevel)}
                 style={{ width: '100%' }}
               >
-                <IonSelectOption value="sedentary">🛋️ Sedentario (poco o nada)</IonSelectOption>
-                <IonSelectOption value="light">🚶 Ligero (1-3 días de ejercicio)</IonSelectOption>
-                <IonSelectOption value="moderate">🏃 Moderado (3-5 días de ejercicio)</IonSelectOption>
-                <IonSelectOption value="active">🏋️ Activo (6-7 días de ejercicio intenso)</IonSelectOption>
-                <IonSelectOption value="very_active">⚡ Muy activo (trabajo físico + pesas)</IonSelectOption>
+                <IonSelectOption value="sedentary">Sedentario (poco o nada)</IonSelectOption>
+                <IonSelectOption value="light">Ligero (1-3 días de ejercicio)</IonSelectOption>
+                <IonSelectOption value="moderate">Moderado (3-5 días de ejercicio)</IonSelectOption>
+                <IonSelectOption value="active">Activo (6-7 días de ejercicio intenso)</IonSelectOption>
+                <IonSelectOption value="very_active">Muy activo (trabajo físico + pesas)</IonSelectOption>
               </IonSelect>
             </IonItem>
           </IonCardContent>
@@ -440,7 +442,7 @@ export const NutritionPage: React.FC = () => {
               <IonCardHeader style={{ padding: '14px 16px 8px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '1.25rem' }}>{meal.emoji}</span>
+                    <IonIcon icon={meal.icon} style={{ fontSize: '1.2rem', color: 'var(--ion-color-primary)' }} />
                     <IonCardTitle style={{ fontSize: '1.02rem', fontWeight: 700 }}>
                       {meal.title}
                     </IonCardTitle>
@@ -549,7 +551,7 @@ export const NutritionPage: React.FC = () => {
             setEntryToEdit(null);
           }}
           onSaved={() => {
-            setToastMessage('Comida registrada correctamente 🍽️');
+            setToastMessage('Comida registrada correctamente');
           }}
         />
 
@@ -578,7 +580,7 @@ export const NutritionPage: React.FC = () => {
         <IonAlert
           isOpen={showFormulaInfo}
           onDidDismiss={() => setShowFormulaInfo(false)}
-          header="📐 Ciencia de tus Calorías"
+          header="Ciencia de tus Calorías"
           message={`Tus calorías se calculan con la fórmula Mifflin-St Jeor (reconocida médicamente como la más precisa):\n\n1. Tasa Metabólica Basal (TMB): Calorías que quemas en reposo según tu peso, estatura, edad y sexo.\n2. Gasto Energético Total (GET): TMB multiplicado por tu factor de actividad física.\n3. Ajuste por IMC (${calorieRecommendation.bmi}) y Objetivo (${profile?.targetWeight ? profile.targetWeight + ' kg' : 'Saludable'}): Se aplica un déficit o superávit seguro para optimizar tu composición corporal sin perjudicar tu metabolismo.`}
           buttons={['Entendido']}
         />
@@ -601,7 +603,7 @@ export const NutritionPage: React.FC = () => {
               steps,
               caloriesBurned,
             });
-            setToastMessage('Actividad y pasos del día actualizados 👟🔥');
+            setToastMessage('Actividad y pasos del día actualizados');
           }}
         />
 

@@ -33,6 +33,9 @@ import {
   downloadOutline,
   cloudUploadOutline,
   codeSlashOutline,
+  flameOutline,
+  shieldCheckmarkOutline,
+  checkmarkCircleOutline,
 } from 'ionicons/icons';
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
@@ -97,7 +100,7 @@ export const WorkoutsPage: React.FC = () => {
           files: [cacheFile.uri],
           dialogTitle: 'Guardar Formato JSON de Rutinas',
         });
-        setToastMessage(`📄 Formato ${fileName} listo.`);
+        setToastMessage(`Formato ${fileName} listo.`);
         return;
       } catch (err: any) {
         if (err?.message && String(err.message).toLowerCase().includes('cancel')) {
@@ -115,7 +118,7 @@ export const WorkoutsPage: React.FC = () => {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    setToastMessage(`📥 Formato ${fileName} descargado.`);
+    setToastMessage(`Formato ${fileName} descargado.`);
   };
 
   const handleQuickUploadJsonFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -127,10 +130,10 @@ export const WorkoutsPage: React.FC = () => {
       const res = await StorageService.importRoutinesAndExercises(parsed, 'merge');
       refreshData();
       setToastMessage(
-        `✅ Importadas ${res.importedRoutines} rutina(s) y ${res.importedExercises} ejercicio(s).`
+        `Importadas ${res.importedRoutines} rutina(s) y ${res.importedExercises} ejercicio(s).`
       );
     } catch (err: any) {
-      setToastMessage(err?.message || '⚠️ Error al importar el archivo JSON.');
+      setToastMessage(err?.message || 'Error al importar el archivo JSON.');
     } finally {
       if (quickJsonInputRef.current) {
         quickJsonInputRef.current.value = '';
@@ -257,27 +260,30 @@ export const WorkoutsPage: React.FC = () => {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    fontSize: '1.35rem',
+                    fontSize: '1.25rem',
+                    color: '#60a5fa',
                   }}
                 >
-                  {gamification.rank.icon}
+                  <IonIcon icon={trophyOutline} />
                 </div>
                 <div>
                   <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#60a5fa', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
                     NIVEL {gamification.level} • {gamification.rank.title}
                   </div>
                   <div style={{ fontSize: '0.92rem', fontWeight: 800, color: '#ffffff' }}>
-                    🎯 Misiones de Hoy ({gamification.completedDailyMissionsCount}/3)
+                    Misiones de Hoy ({gamification.completedDailyMissionsCount}/3)
                   </div>
                 </div>
               </div>
 
               <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#fb923c' }}>
-                  🔥 {gamification.activeStreakDays}d racha
+                <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#fb923c', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px' }}>
+                  <IonIcon icon={flameOutline} />
+                  <span>{gamification.activeStreakDays}d racha</span>
                 </div>
-                <div style={{ fontSize: '0.72rem', color: '#a78bfa', fontWeight: 700 }}>
-                  🛡️ {gamification.shieldsAvailable}/3 escudos
+                <div style={{ fontSize: '0.72rem', color: '#a78bfa', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px' }}>
+                  <IonIcon icon={shieldCheckmarkOutline} />
+                  <span>{gamification.shieldsAvailable}/3 escudos</span>
                 </div>
               </div>
             </div>
@@ -307,9 +313,13 @@ export const WorkoutsPage: React.FC = () => {
                     background: m.completed ? 'rgba(16, 185, 129, 0.18)' : 'rgba(255, 255, 255, 0.05)',
                     color: m.completed ? '#34d399' : '#cbd5e1',
                     border: m.completed ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(255, 255, 255, 0.08)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
                   }}
                 >
-                  {m.completed ? '✓ ' : `${m.icon} `}{m.title}
+                  {m.completed && <IonIcon icon={checkmarkCircleOutline} />}
+                  <span>{m.title}</span>
                 </span>
               ))}
             </div>

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { IonHeader, IonToolbar, IonButtons, IonTitle } from '@ionic/react';
+import { IonHeader, IonToolbar, IonButtons, IonTitle, IonIcon } from '@ionic/react';
+import { flameOutline, trophyOutline } from 'ionicons/icons';
 import { useApp } from '../context/AppContext';
 import { GamificationModal } from './GamificationModal';
 
@@ -112,10 +113,14 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                   boxShadow: '0 2px 8px rgba(0, 0, 0, 0.25)',
                 }}
               >
-                <span style={{ color: '#fb923c' }}>🔥 {gamification.activeStreakDays}d</span>
+                <span style={{ color: '#fb923c', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                  <IonIcon icon={flameOutline} style={{ fontSize: '0.88rem' }} />
+                  {gamification.activeStreakDays}d
+                </span>
                 <span style={{ opacity: 0.35 }}>|</span>
-                <span style={{ color: '#60a5fa' }}>
-                  {gamification.rank.icon} Nv.{gamification.level}
+                <span style={{ color: '#60a5fa', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                  <IonIcon icon={trophyOutline} style={{ fontSize: '0.85rem' }} />
+                  Nv.{gamification.level}
                 </span>
               </button>
 

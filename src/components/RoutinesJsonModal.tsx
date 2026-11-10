@@ -19,6 +19,10 @@ import {
   checkmarkCircleOutline,
   shareSocialOutline,
   documentTextOutline,
+  trashOutline,
+  alertCircleOutline,
+  chevronUpOutline,
+  chevronDownOutline,
 } from 'ionicons/icons';
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
@@ -80,7 +84,7 @@ export const RoutinesJsonModal: React.FC<RoutinesJsonModalProps> = ({
           files: [cacheFile.uri],
           dialogTitle,
         });
-        onSuccessToast(`📄 Archivo ${fileName} listo.`);
+        onSuccessToast(`Archivo ${fileName} listo.`);
         return;
       } catch (err: any) {
         if (err?.message && String(err.message).toLowerCase().includes('cancel')) {
@@ -90,7 +94,7 @@ export const RoutinesJsonModal: React.FC<RoutinesJsonModalProps> = ({
     }
 
     triggerWebDownload(jsonStr, fileName);
-    onSuccessToast(`📥 Archivo ${fileName} descargado.`);
+    onSuccessToast(`Archivo ${fileName} descargado.`);
   };
 
   const handleDownloadTemplate = async () => {
@@ -110,10 +114,10 @@ export const RoutinesJsonModal: React.FC<RoutinesJsonModalProps> = ({
     const jsonStr = JSON.stringify(template, null, 2);
     try {
       await navigator.clipboard.writeText(jsonStr);
-      onSuccessToast('📋 Formato JSON copiado al portapapeles.');
+      onSuccessToast('Formato JSON copiado al portapapeles.');
     } catch {
       setJsonTextInput(jsonStr);
-      onSuccessToast('📋 Formato cargado en el cuadro de texto inferior.');
+      onSuccessToast('Formato cargado en el cuadro de texto inferior.');
     }
   };
 
@@ -123,6 +127,11 @@ export const RoutinesJsonModal: React.FC<RoutinesJsonModalProps> = ({
     const jsonStr = JSON.stringify(exported, null, 2);
     const fileName = `fittrack-mis-rutinas-${getLocalDateString()}.json`;
     await saveOrShareJsonFile(jsonStr, fileName, 'Exportar Mis Rutinas JSON');
+  };
+
+  const handleClearTextInput = () => {
+    setJsonTextInput('');
+    setErrorMsg(null);
   };
 
   const processImportedJson = async (rawText: string) => {
@@ -140,7 +149,7 @@ export const RoutinesJsonModal: React.FC<RoutinesJsonModalProps> = ({
       refreshData();
       setJsonTextInput('');
       onSuccessToast(
-        `✅ Importación exitosa: ${result.importedRoutines} rutina(s) y ${result.importedExercises} ejercicio(s) nuevos.`
+        `Importación exitosa: ${result.importedRoutines} rutina(s) y ${result.importedExercises} ejercicio(s) nuevos.`
       );
       onClose();
     } catch (err: any) {
@@ -205,9 +214,13 @@ export const RoutinesJsonModal: React.FC<RoutinesJsonModalProps> = ({
               fontSize: '0.82rem',
               fontWeight: 600,
               marginBottom: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
             }}
           >
-            ⚠️ {errorMsg}
+            <IonIcon icon={alertCircleOutline} style={{ fontSize: '1.2rem', flexShrink: 0 }} />
+            <span>{errorMsg}</span>
           </div>
         )}
 
@@ -232,10 +245,12 @@ export const RoutinesJsonModal: React.FC<RoutinesJsonModalProps> = ({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '1.1rem',
+                color: '#60a5fa',
+                fontSize: '1.15rem',
+                flexShrink: 0,
               }}
             >
-              📄
+              <IonIcon icon={documentTextOutline} />
             </div>
             <div>
               <div style={{ fontWeight: 800, fontSize: '0.96rem', color: '#ffffff' }}>
@@ -296,10 +311,18 @@ export const RoutinesJsonModal: React.FC<RoutinesJsonModalProps> = ({
               fontSize: '0.75rem',
               fontWeight: 700,
               cursor: 'pointer',
-              textAlign: 'center',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '4px',
             }}
           >
-            {showTemplatePreview ? '▲ Ocultar vista previa del formato JSON' : '▼ Ver cómo se llena el formato JSON'}
+            <IonIcon icon={showTemplatePreview ? chevronUpOutline : chevronDownOutline} />
+            <span>
+              {showTemplatePreview
+                ? 'Ocultar vista previa del formato JSON'
+                : 'Ver cómo se llena el formato JSON'}
+            </span>
           </button>
 
           {showTemplatePreview && (
@@ -342,10 +365,12 @@ export const RoutinesJsonModal: React.FC<RoutinesJsonModalProps> = ({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '1.1rem',
+                color: '#34d399',
+                fontSize: '1.15rem',
+                flexShrink: 0,
               }}
             >
-              📥
+              <IonIcon icon={cloudUploadOutline} />
             </div>
             <div>
               <div style={{ fontWeight: 800, fontSize: '0.96rem', color: '#ffffff' }}>
@@ -369,12 +394,12 @@ export const RoutinesJsonModal: React.FC<RoutinesJsonModalProps> = ({
             {[
               {
                 id: 'merge' as const,
-                title: '➕ Agregar a las actuales',
+                title: 'Agregar a las actuales',
                 sub: 'Conserva tus rutinas existentes',
               },
               {
                 id: 'replace' as const,
-                title: '🔄 Reemplazar todas',
+                title: 'Reemplazar todas',
                 sub: 'Sustituye la lista de rutinas',
               },
             ].map((m) => {
@@ -429,18 +454,55 @@ export const RoutinesJsonModal: React.FC<RoutinesJsonModalProps> = ({
             onChange={handleFileUpload}
           />
 
-          {/* Optional Paste JSON Area */}
+          {/* Paste JSON Area with Clear Button */}
           <div>
             <div
               style={{
-                fontSize: '0.74rem',
-                fontWeight: 700,
-                color: '#94a3b8',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
                 marginBottom: '6px',
               }}
             >
-              O pega aquí tu contenido JSON directamente:
+              <span
+                style={{
+                  fontSize: '0.74rem',
+                  fontWeight: 700,
+                  color: '#94a3b8',
+                }}
+              >
+                O pega aquí tu contenido JSON directamente:
+              </span>
+              <button
+                type="button"
+                onClick={handleClearTextInput}
+                disabled={jsonTextInput.length === 0}
+                style={{
+                  background:
+                    jsonTextInput.length > 0
+                      ? 'rgba(239, 68, 68, 0.14)'
+                      : 'rgba(255, 255, 255, 0.05)',
+                  border:
+                    jsonTextInput.length > 0
+                      ? '1px solid rgba(239, 68, 68, 0.35)'
+                      : '1px solid rgba(255, 255, 255, 0.08)',
+                  color: jsonTextInput.length > 0 ? '#fca5a5' : 'var(--ion-color-medium)',
+                  borderRadius: '8px',
+                  padding: '4px 10px',
+                  fontSize: '0.72rem',
+                  fontWeight: 700,
+                  cursor: jsonTextInput.length > 0 ? 'pointer' : 'default',
+                  opacity: jsonTextInput.length > 0 ? 1 : 0.5,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                }}
+              >
+                <IonIcon icon={trashOutline} />
+                Limpiar
+              </button>
             </div>
+
             <textarea
               rows={4}
               value={jsonTextInput}
@@ -459,16 +521,28 @@ export const RoutinesJsonModal: React.FC<RoutinesJsonModalProps> = ({
               }}
             />
             {jsonTextInput.trim().length > 0 && (
-              <IonButton
-                expand="block"
-                color="success"
-                size="small"
-                onClick={() => processImportedJson(jsonTextInput)}
-                style={{ '--border-radius': '10px', fontWeight: 800, marginTop: '6px' } as React.CSSProperties}
-              >
-                <IonIcon slot="start" icon={checkmarkCircleOutline} />
-                Importar JSON Pegado Ahora
-              </IonButton>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '8px', marginTop: '6px' }}>
+                <IonButton
+                  expand="block"
+                  color="success"
+                  size="small"
+                  onClick={() => processImportedJson(jsonTextInput)}
+                  style={{ '--border-radius': '10px', fontWeight: 800, margin: 0 } as React.CSSProperties}
+                >
+                  <IonIcon slot="start" icon={checkmarkCircleOutline} />
+                  Importar JSON Pegado
+                </IonButton>
+                <IonButton
+                  fill="outline"
+                  color="danger"
+                  size="small"
+                  onClick={handleClearTextInput}
+                  style={{ '--border-radius': '10px', fontWeight: 700, margin: 0 } as React.CSSProperties}
+                >
+                  <IonIcon slot="start" icon={trashOutline} />
+                  Limpiar
+                </IonButton>
+              </div>
             )}
           </div>
         </div>
@@ -493,10 +567,12 @@ export const RoutinesJsonModal: React.FC<RoutinesJsonModalProps> = ({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '1.1rem',
+                color: '#a78bfa',
+                fontSize: '1.15rem',
+                flexShrink: 0,
               }}
             >
-              📤
+              <IonIcon icon={shareSocialOutline} />
             </div>
             <div>
               <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#ffffff' }}>
