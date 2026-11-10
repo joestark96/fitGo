@@ -3,6 +3,10 @@ import {
   UserProfile,
   ExerciseDefinition,
   Routine,
+  RoutineExerciseConfig,
+  MuscleGroup,
+  EquipmentType,
+  ExerciseMeasurementMode,
   WeightRecord,
   WorkoutSession,
   BmiCategory,
@@ -26,6 +30,21 @@ export interface FitTrackBackupPayload {
   foodEntries: FoodEntry[];
   dailyActivities: DailyActivity[];
   activityLevel: ActivityLevel;
+}
+
+export interface RoutinesJsonPackage {
+  format: 'fittrack-routines-v1';
+  version: string;
+  exportedAt: string;
+  _guia_de_formato?: {
+    instrucciones: string;
+    grupos_musculares_validos: MuscleGroup[];
+    equipos_validos: EquipmentType[];
+    modos_de_medicion: Record<ExerciseMeasurementMode, string>;
+    dias_validos: string[];
+  };
+  exercises: Partial<ExerciseDefinition>[];
+  routines: Partial<Routine>[];
 }
 
 const STORAGE_KEYS = {
@@ -1026,6 +1045,392 @@ export const StorageService = {
 
     localStorage.setItem(STORAGE_KEYS.LAST_BACKUP_AT, new Date().toISOString());
     return true;
+  },
+
+  // --- Routines & Exercises JSON Template / Export / Import (v1.0.5) ---
+  getRoutinesJsonTemplate(): RoutinesJsonPackage {
+    return {
+      format: 'fittrack-routines-v1',
+      version: APP_VERSION,
+      exportedAt: new Date().toISOString(),
+      _guia_de_formato: {
+        instrucciones:
+          'Llena la lista de "exercises" (si deseas agregar ejercicios nuevos al catálogo) y la lista de "routines" con tus rutinas. Si un ejercicio dentro de una rutina aún no existe en el catálogo, FitTrack lo creará automáticamente por su nombre ("exerciseName").',
+        grupos_musculares_validos: [
+          'pecho',
+          'espalda',
+          'piernas',
+          'hombros',
+          'brazos',
+          'core',
+          'cardio',
+          'cuerpo_completo',
+        ],
+        equipos_validos: [
+          'sin_equipo',
+          'mancuernas',
+          'barra',
+          'maquina',
+          'polea',
+          'bandas',
+          'otro',
+        ],
+        modos_de_medicion: {
+          weight_reps: 'Peso (kg) y Repeticiones',
+          reps_only: 'Solo Repeticiones (ej. calistenia / peso corporal)',
+          duration: 'Tiempo en segundos (ej. plancha / cardio)',
+        },
+        dias_validos: ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'],
+      },
+      exercises: [
+        {
+          id: 'ex-custom-hip-thrust',
+          name: 'Hip Thrust con Barra',
+          muscleGroup: 'piernas',
+          defaultMode: 'weight_reps',
+          equipment: 'barra',
+          description: 'Empuje de cadera con espalda apoyada en banco para glúteos e isquiotibiales.',
+        },
+        {
+          id: 'ex-custom-dominadas-neutras',
+          name: 'Dominadas Agarre Neutro',
+          muscleGroup: 'espalda',
+          defaultMode: 'reps_only',
+          equipment: 'sin_equipo',
+          description: 'Tracción vertical con palmas enfrentadas.',
+        },
+      ],
+      routines: [
+        {
+          name: 'Ejemplo: Empuje Hipertrofia (Push Day)',
+          description: 'Rutina enfocada en pecho, hombros y tríceps.',
+          targetDays: ['Lunes', 'Jueves'],
+          exercises: [
+            {
+              id: 'cfg-ejemplo-1',
+              exerciseId: 'ex-press-banca',
+              exerciseName: 'Press de Banca Plano',
+              mode: 'weight_reps',
+              targetSets: 4,
+              targetReps: 8,
+              targetWeightKg: 60,
+              restSeconds: 90,
+              notes: 'Bajar controlado en 2 segundos.',
+              setsConfig: [
+                { setNumber: 1, targetWeightKg: 55, targetReps: 10 },
+                { setNumber: 2, targetWeightKg: 60, targetReps: 8 },
+                { setNumber: 3, targetWeightKg: 62.5, targetReps: 8 },
+                { setNumber: 4, targetWeightKg: 65, targetReps: 6 },
+              ],
+            },
+            {
+              id: 'cfg-ejemplo-2',
+              exerciseId: 'ex-press-militar',
+              exerciseName: 'Press Militar con Mancuernas',
+              mode: 'weight_reps',
+              targetSets: 3,
+              targetReps: 10,
+              targetWeightKg: 20,
+              restSeconds: 75,
+            },
+            {
+              id: 'cfg-ejemplo-3',
+              exerciseId: 'ex-flexiones',
+              exerciseName: 'Flexiones de Pecho (Push-ups)',
+              mode: 'reps_only',
+              targetSets: 3,
+              targetReps: 15,
+              restSeconds: 60,
+            },
+          ],
+        },
+      ],
+    };
+  },
+
+  exportRoutinesAndExercises(): RoutinesJsonPackage {
+    const allExercises = this.getExercises();
+    const defaultIds = new Set(DEFAULT_EXERCISES.map((d) => d.id));
+    const customExercises = allExercises.filter((ex) => !defaultIds.has(ex.id));
+
+    return {
+      format: 'fittrack-routines-v1',
+      version: APP_VERSION,
+      exportedAt: new Date().toISOString(),
+      _guia_de_formato: this.getRoutinesJsonTemplate()._guia_de_formato,
+      exercises: customExercises,
+      routines: this.getRoutines(),
+    };
+  },
+
+  async importRoutinesAndExercises(
+    rawPayload: any,
+    mode: 'merge' | 'replace' = 'merge'
+  ): Promise<{ importedRoutines: number; importedExercises: number }> {
+    if (!rawPayload || typeof rawPayload !== 'object') {
+      throw new Error('El archivo JSON no tiene un formato válido.');
+    }
+
+    // Normalize input: support { routines, exercises }, or direct array of routines, or single routine
+    let rawExercises: any[] = [];
+    let rawRoutines: any[] = [];
+
+    if (Array.isArray(rawPayload)) {
+      rawRoutines = rawPayload;
+    } else if (Array.isArray(rawPayload.routines) || Array.isArray(rawPayload.exercises)) {
+      rawExercises = Array.isArray(rawPayload.exercises) ? rawPayload.exercises : [];
+      rawRoutines = Array.isArray(rawPayload.routines) ? rawPayload.routines : [];
+    } else if (rawPayload.name && Array.isArray(rawPayload.exercises)) {
+      // Single routine object passed directly
+      rawRoutines = [rawPayload];
+    } else {
+      throw new Error(
+        'El JSON debe contener una lista de "routines" y/o "exercises". Descarga el formato de plantilla para ver un ejemplo.'
+      );
+    }
+
+    const validMuscleGroups = new Set<MuscleGroup>([
+      'pecho',
+      'espalda',
+      'piernas',
+      'hombros',
+      'brazos',
+      'core',
+      'cardio',
+      'cuerpo_completo',
+    ]);
+    const validEquipments = new Set<EquipmentType>([
+      'sin_equipo',
+      'mancuernas',
+      'barra',
+      'maquina',
+      'polea',
+      'bandas',
+      'otro',
+    ]);
+    const validModes = new Set<ExerciseMeasurementMode>(['weight_reps', 'reps_only', 'duration']);
+
+    const normalizeSlug = (text: string) =>
+      text
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+
+    const catalog = [...this.getExercises()];
+    let importedExercisesCount = 0;
+
+    const findOrCreateCatalogExercise = (item: {
+      id?: string;
+      exerciseId?: string;
+      name?: string;
+      exerciseName?: string;
+      muscleGroup?: string;
+      defaultMode?: string;
+      mode?: string;
+      equipment?: string;
+      description?: string;
+      gifUrl?: string;
+    }): ExerciseDefinition => {
+      const targetId = (item.id || item.exerciseId || '').trim();
+      const targetName = (item.name || item.exerciseName || 'Ejercicio Personalizado').trim();
+
+      // 1. Match by ID
+      if (targetId) {
+        const byId = catalog.find((e) => e.id === targetId);
+        if (byId) return byId;
+      }
+
+      // 2. Match by case-insensitive name
+      const byName = catalog.find(
+        (e) => e.name.trim().toLowerCase() === targetName.toLowerCase()
+      );
+      if (byName) return byName;
+
+      // 3. Create new exercise in catalog
+      const newId = targetId || `ex-custom-${normalizeSlug(targetName) || Date.now()}`;
+      const rawMuscle = (item.muscleGroup || 'cuerpo_completo').toLowerCase() as MuscleGroup;
+      const muscleGroup: MuscleGroup = validMuscleGroups.has(rawMuscle)
+        ? rawMuscle
+        : 'cuerpo_completo';
+      const rawMode = (item.defaultMode || item.mode || 'weight_reps') as ExerciseMeasurementMode;
+      const defaultMode: ExerciseMeasurementMode = validModes.has(rawMode)
+        ? rawMode
+        : 'weight_reps';
+      const rawEq = (item.equipment || 'otro').toLowerCase() as EquipmentType;
+      const equipment: EquipmentType = validEquipments.has(rawEq) ? rawEq : 'otro';
+
+      const created: ExerciseDefinition = {
+        id: newId,
+        name: targetName,
+        muscleGroup,
+        defaultMode,
+        equipment,
+        description: item.description || undefined,
+        gifUrl: item.gifUrl || undefined,
+      };
+
+      catalog.push(created);
+      this.saveExercise(created);
+      importedExercisesCount++;
+      return created;
+    };
+
+    // Process explicit exercises list first
+    for (const rawEx of rawExercises) {
+      if (!rawEx || typeof rawEx !== 'object') continue;
+      const exName = (rawEx.name || rawEx.exerciseName || '').trim();
+      if (!exName) continue;
+
+      const existingIdx = catalog.findIndex(
+        (e) =>
+          (rawEx.id && e.id === rawEx.id) ||
+          e.name.trim().toLowerCase() === exName.toLowerCase()
+      );
+
+      const rawMuscle = (rawEx.muscleGroup || 'cuerpo_completo').toLowerCase() as MuscleGroup;
+      const muscleGroup: MuscleGroup = validMuscleGroups.has(rawMuscle)
+        ? rawMuscle
+        : 'cuerpo_completo';
+      const rawMode = (rawEx.defaultMode || rawEx.mode || 'weight_reps') as ExerciseMeasurementMode;
+      const defaultMode: ExerciseMeasurementMode = validModes.has(rawMode)
+        ? rawMode
+        : 'weight_reps';
+      const rawEq = (rawEx.equipment || 'otro').toLowerCase() as EquipmentType;
+      const equipment: EquipmentType = validEquipments.has(rawEq) ? rawEq : 'otro';
+
+      const exDef: ExerciseDefinition = {
+        id:
+          existingIdx >= 0
+            ? catalog[existingIdx].id
+            : rawEx.id || `ex-custom-${normalizeSlug(exName) || Date.now()}`,
+        name: exName,
+        muscleGroup,
+        defaultMode,
+        equipment,
+        description: rawEx.description || (existingIdx >= 0 ? catalog[existingIdx].description : undefined),
+        gifUrl: rawEx.gifUrl || (existingIdx >= 0 ? catalog[existingIdx].gifUrl : undefined),
+      };
+
+      if (existingIdx >= 0) {
+        catalog[existingIdx] = exDef;
+      } else {
+        catalog.push(exDef);
+      }
+      this.saveExercise(exDef);
+      importedExercisesCount++;
+    }
+
+    // Process routines list
+    const nowIso = new Date().toISOString();
+    const parsedRoutines: Routine[] = [];
+
+    for (let rIdx = 0; rIdx < rawRoutines.length; rIdx++) {
+      const rawR = rawRoutines[rIdx];
+      if (!rawR || typeof rawR !== 'object') continue;
+      const rName = (rawR.name || `Rutina Importada ${rIdx + 1}`).trim();
+      const rawExList = Array.isArray(rawR.exercises) ? rawR.exercises : [];
+
+      const routineExercises: RoutineExerciseConfig[] = rawExList
+        .filter((item: any) => item && typeof item === 'object')
+        .map((item: any, exIdx: number) => {
+          const matchedDef = findOrCreateCatalogExercise(item);
+          const rawMode = (item.mode || matchedDef.defaultMode || 'weight_reps') as ExerciseMeasurementMode;
+          const exMode: ExerciseMeasurementMode = validModes.has(rawMode)
+            ? rawMode
+            : matchedDef.defaultMode;
+          const targetSets = Math.max(1, Number(item.targetSets) || (Array.isArray(item.setsConfig) ? item.setsConfig.length : 3));
+
+          return {
+            id: item.id || `r-ex-${Date.now()}-${rIdx}-${exIdx}`,
+            exerciseId: matchedDef.id,
+            exerciseName: item.exerciseName || item.name || matchedDef.name,
+            mode: exMode,
+            targetSets,
+            targetReps:
+              exMode !== 'duration'
+                ? Number(item.targetReps) > 0
+                  ? Number(item.targetReps)
+                  : 10
+                : undefined,
+            targetWeightKg:
+              exMode === 'weight_reps'
+                ? item.targetWeightKg !== undefined
+                  ? Number(item.targetWeightKg)
+                  : 20
+                : undefined,
+            targetDurationSeconds:
+              exMode === 'duration'
+                ? Number(item.targetDurationSeconds) > 0
+                  ? Number(item.targetDurationSeconds)
+                  : 45
+                : undefined,
+            restSeconds: Number(item.restSeconds) > 0 ? Number(item.restSeconds) : 60,
+            notes: item.notes || undefined,
+            gifUrl: item.gifUrl || matchedDef.gifUrl,
+            setsConfig: Array.isArray(item.setsConfig)
+              ? item.setsConfig.map((s: any, sIdx: number) => ({
+                  setNumber: Number(s.setNumber) || sIdx + 1,
+                  targetReps: s.targetReps !== undefined ? Number(s.targetReps) : undefined,
+                  targetWeightKg:
+                    s.targetWeightKg !== undefined ? Number(s.targetWeightKg) : undefined,
+                  targetDurationSeconds:
+                    s.targetDurationSeconds !== undefined
+                      ? Number(s.targetDurationSeconds)
+                      : undefined,
+                }))
+              : undefined,
+          };
+        });
+
+      parsedRoutines.push({
+        id: rawR.id || `routine-import-${Date.now()}-${rIdx}`,
+        name: rName,
+        description: rawR.description || undefined,
+        targetDays: Array.isArray(rawR.targetDays) ? rawR.targetDays : undefined,
+        exercises: routineExercises,
+        createdAt: rawR.createdAt || nowIso,
+        updatedAt: nowIso,
+      });
+    }
+
+    if (parsedRoutines.length === 0 && importedExercisesCount === 0) {
+      throw new Error('No se encontraron rutinas ni ejercicios válidos en el archivo JSON.');
+    }
+
+    if (parsedRoutines.length > 0) {
+      let finalRoutines: Routine[];
+      if (mode === 'replace') {
+        finalRoutines = parsedRoutines;
+      } else {
+        const currentRoutines = this.getRoutines();
+        const updatedList = [...currentRoutines];
+        for (const imported of parsedRoutines) {
+          const existingIndex = updatedList.findIndex(
+            (r) =>
+              r.id === imported.id ||
+              r.name.trim().toLowerCase() === imported.name.trim().toLowerCase()
+          );
+          if (existingIndex >= 0) {
+            updatedList[existingIndex] = { ...imported, id: updatedList[existingIndex].id };
+          } else {
+            updatedList.unshift(imported);
+          }
+        }
+        finalRoutines = updatedList;
+      }
+
+      localStorage.setItem(STORAGE_KEYS.ROUTINES, JSON.stringify(finalRoutines));
+      for (const r of finalRoutines) {
+        await sqliteService.saveRoutine(r).catch(() => {});
+      }
+    }
+
+    return {
+      importedRoutines: parsedRoutines.length,
+      importedExercises: importedExercisesCount,
+    };
   },
 
   // Clear data utility

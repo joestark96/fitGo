@@ -447,5 +447,55 @@ describe('Storage and Fitness Calculations', () => {
       expect(StorageService.getUserProfile()?.name).toBe('Alfonso Backup');
       expect(StorageService.getUserProfile()?.height).toBe(185);
     });
+
+    it('generates JSON template and imports custom routines & exercises via importRoutinesAndExercises', async () => {
+      const template = StorageService.getRoutinesJsonTemplate();
+      expect(template.format).toBe('fittrack-routines-v1');
+      expect(template.routines.length).toBeGreaterThan(0);
+
+      const customJson = {
+        exercises: [
+          {
+            name: 'Sentadilla Hack Profunda',
+            muscleGroup: 'piernas',
+            defaultMode: 'weight_reps',
+            equipment: 'maquina',
+          },
+        ],
+        routines: [
+          {
+            name: 'Pierna Pesada JSON',
+            description: 'Importada desde archivo JSON',
+            targetDays: ['Martes', 'Viernes'],
+            exercises: [
+              {
+                exerciseName: 'Sentadilla Hack Profunda',
+                mode: 'weight_reps',
+                targetSets: 4,
+                targetReps: 10,
+                targetWeightKg: 100,
+              },
+              {
+                exerciseName: 'Ejercicio Nuevo Automático',
+                muscleGroup: 'piernas',
+                mode: 'reps_only',
+                targetSets: 3,
+                targetReps: 15,
+              },
+            ],
+          },
+        ],
+      };
+
+      const res = await StorageService.importRoutinesAndExercises(customJson, 'merge');
+      expect(res.importedRoutines).toBe(1);
+      expect(res.importedExercises).toBe(2);
+
+      const routines = StorageService.getRoutines();
+      const importedRoutine = routines.find((r) => r.name === 'Pierna Pesada JSON');
+      expect(importedRoutine).toBeDefined();
+      expect(importedRoutine?.exercises).toHaveLength(2);
+      expect(importedRoutine?.exercises[0].targetWeightKg).toBe(100);
+    });
   });
 });

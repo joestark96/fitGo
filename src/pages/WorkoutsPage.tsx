@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   IonPage,
   IonHeader,
@@ -30,13 +30,20 @@ import {
   timeOutline,
   checkmarkDoneOutline,
   searchOutline,
+  downloadOutline,
+  cloudUploadOutline,
+  codeSlashOutline,
 } from 'ionicons/icons';
+import { Capacitor } from '@capacitor/core';
+import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
 import { useApp } from '../context/AppContext';
 import { Routine, WorkoutSession } from '../types';
-import { formatDateDDMMYYYY } from '../services/storage';
+import { formatDateDDMMYYYY, StorageService } from '../services/storage';
 import { RoutineFormModal } from '../components/RoutineFormModal';
 import { WorkoutPlayerModal } from '../components/WorkoutPlayerModal';
 import { ExerciseCatalogModal } from '../components/ExerciseCatalogModal';
+import { RoutinesJsonModal } from '../components/RoutinesJsonModal';
 import { AppHeader } from '../components/AppHeader';
 import { GamificationModal } from '../components/GamificationModal';
 
@@ -49,6 +56,7 @@ export const WorkoutsPage: React.FC = () => {
     workoutSessions,
     profile,
     gamification,
+    refreshData,
   } = useApp();
 
   const [isRoutineModalOpen, setIsRoutineModalOpen] = useState(false);
@@ -58,6 +66,77 @@ export const WorkoutsPage: React.FC = () => {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isCatalogOpen, setIsCatalogOpen] = useState(false);
   const [isGamificationOpen, setIsGamificationOpen] = useState(false);
+  const [isJsonModalOpen, setIsJsonModalOpen] = useState(false);
+  const quickJsonInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleQuickDownloadTemplate = async () => {
+    const template = StorageService.getRoutinesJsonTemplate();
+    const jsonStr = JSON.stringify(template, null, 2);
+    const fileName = 'fittrack-formato-rutinas.json';
+
+    if (Capacitor.isNativePlatform()) {
+      try {
+        try {
+          await Filesystem.writeFile({
+            path: fileName,
+            data: jsonStr,
+            directory: Directory.Documents,
+            encoding: Encoding.UTF8,
+          });
+        } catch {
+          // ignore
+        }
+        const cacheFile = await Filesystem.writeFile({
+          path: fileName,
+          data: jsonStr,
+          directory: Directory.Cache,
+          encoding: Encoding.UTF8,
+        });
+        await Share.share({
+          title: fileName,
+          files: [cacheFile.uri],
+          dialogTitle: 'Guardar Formato JSON de Rutinas',
+        });
+        setToastMessage(`📄 Formato ${fileName} listo.`);
+        return;
+      } catch (err: any) {
+        if (err?.message && String(err.message).toLowerCase().includes('cancel')) {
+          return;
+        }
+      }
+    }
+
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setToastMessage(`📥 Formato ${fileName} descargado.`);
+  };
+
+  const handleQuickUploadJsonFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      const res = await StorageService.importRoutinesAndExercises(parsed, 'merge');
+      refreshData();
+      setToastMessage(
+        `✅ Importadas ${res.importedRoutines} rutina(s) y ${res.importedExercises} ejercicio(s).`
+      );
+    } catch (err: any) {
+      setToastMessage(err?.message || '⚠️ Error al importar el archivo JSON.');
+    } finally {
+      if (quickJsonInputRef.current) {
+        quickJsonInputRef.current.value = '';
+      }
+    }
+  };
 
   const handleCreateNew = () => {
     setRoutineToEdit(null);
@@ -238,7 +317,7 @@ export const WorkoutsPage: React.FC = () => {
         </IonCard>
 
         {/* Section: Mis Rutinas */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
           <h2 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700 }}>
             Mis Rutinas <span style={{ color: 'var(--ion-color-medium)', fontWeight: 500 }}>({routines.length})</span>
           </h2>
@@ -252,6 +331,104 @@ export const WorkoutsPage: React.FC = () => {
               Nueva Rutina
             </IonButton>
           </div>
+        </div>
+
+        {/* JSON Routines & Exercises Bar (Download Format / Upload JSON / Export) */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '8px',
+            flexWrap: 'wrap',
+            background: 'rgba(15, 23, 42, 0.65)',
+            border: '1px solid rgba(59, 130, 246, 0.25)',
+            borderRadius: '14px',
+            padding: '10px 12px',
+            marginBottom: '14px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <IonIcon icon={codeSlashOutline} style={{ color: '#60a5fa', fontSize: '1.15rem' }} />
+            <div>
+              <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#f8fafc' }}>
+                Rutinas en JSON
+              </div>
+              <div style={{ fontSize: '0.68rem', color: 'var(--ion-color-medium)' }}>
+                Descarga la plantilla o sube tus rutinas
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={handleQuickDownloadTemplate}
+              style={{
+                background: 'rgba(59, 130, 246, 0.16)',
+                border: '1px solid rgba(59, 130, 246, 0.4)',
+                color: '#93c5fd',
+                borderRadius: '10px',
+                padding: '6px 10px',
+                fontSize: '0.74rem',
+                fontWeight: 800,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+              }}
+            >
+              <IonIcon icon={downloadOutline} />
+              Descargar Formato
+            </button>
+
+            <button
+              type="button"
+              onClick={() => quickJsonInputRef.current?.click()}
+              style={{
+                background: 'rgba(16, 185, 129, 0.18)',
+                border: '1px solid rgba(16, 185, 129, 0.45)',
+                color: '#6ee7b7',
+                borderRadius: '10px',
+                padding: '6px 10px',
+                fontSize: '0.74rem',
+                fontWeight: 800,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+              }}
+            >
+              <IonIcon icon={cloudUploadOutline} />
+              Subir JSON
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsJsonModalOpen(true)}
+              style={{
+                background: 'rgba(255, 255, 255, 0.06)',
+                border: '1px solid rgba(255, 255, 255, 0.14)',
+                color: '#cbd5e1',
+                borderRadius: '10px',
+                padding: '6px 9px',
+                fontSize: '0.74rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+              title="Abrir gestor completo de JSON (Exportar / Pegar)"
+            >
+              Exportar / Más
+            </button>
+          </div>
+
+          <input
+            ref={quickJsonInputRef}
+            type="file"
+            accept=".json,application/json"
+            style={{ display: 'none' }}
+            onChange={handleQuickUploadJsonFile}
+          />
         </div>
 
         {routines.length === 0 ? (
@@ -439,6 +616,13 @@ export const WorkoutsPage: React.FC = () => {
         <GamificationModal
           isOpen={isGamificationOpen}
           onClose={() => setIsGamificationOpen(false)}
+        />
+
+        {/* Routines & Exercises JSON Template / Import / Export Modal */}
+        <RoutinesJsonModal
+          isOpen={isJsonModalOpen}
+          onClose={() => setIsJsonModalOpen(false)}
+          onSuccessToast={(msg) => setToastMessage(msg)}
         />
 
         {/* Modal de Catálogo General de Ejercicios */}
