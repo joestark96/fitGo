@@ -1,4 +1,4 @@
-# FitTrack - Aplicación de Ejercicio y Control de Peso
+# fitGo - Aplicación de Ejercicio y Control de Peso
 
 Aplicación móvil y web construida con **Ionic 9 + React 19 + TypeScript + Vite + Capacitor**, diseñada para la creación y ejecución de rutinas de entrenamiento y el control riguroso de peso e IMC (Índice de Masa Corporal).
 

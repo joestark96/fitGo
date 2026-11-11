@@ -75,7 +75,7 @@ export const WorkoutsPage: React.FC = () => {
   const handleQuickDownloadTemplate = async () => {
     const template = StorageService.getRoutinesJsonTemplate();
     const jsonStr = JSON.stringify(template, null, 2);
-    const fileName = 'fittrack-formato-rutinas.json';
+    const fileName = 'fitgo-formato-rutinas.json';
 
     if (Capacitor.isNativePlatform()) {
       try {

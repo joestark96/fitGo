@@ -436,7 +436,7 @@ describe('Storage and Fitness Calculations', () => {
       });
 
       const backup = StorageService.exportBackupData();
-      expect(backup.appName).toBe('FitTrack');
+      expect(backup.appName).toBe('fitGo');
       expect(backup.profile?.name).toBe('Alfonso Backup');
       expect(StorageService.getLastBackupDate()).toBeTruthy();
 
@@ -450,7 +450,7 @@ describe('Storage and Fitness Calculations', () => {
 
     it('generates JSON template and imports custom routines & exercises via importRoutinesAndExercises', async () => {
       const template = StorageService.getRoutinesJsonTemplate();
-      expect(template.format).toBe('fittrack-routines-v1');
+      expect(template.format).toBe('fitgo-routines-v1');
       expect(template.routines.length).toBeGreaterThan(0);
 
       const customJson = {

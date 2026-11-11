@@ -19,7 +19,7 @@ import {
 import { sqliteService } from './sqliteService';
 
 export interface FitTrackBackupPayload {
-  appName: 'FitTrack';
+  appName: 'fitGo' | 'FitTrack';
   version: string;
   exportedAt: string;
   profile: UserProfile | null;
@@ -33,7 +33,7 @@ export interface FitTrackBackupPayload {
 }
 
 export interface RoutinesJsonPackage {
-  format: 'fittrack-routines-v1';
+  format: 'fitgo-routines-v1' | 'fittrack-routines-v1';
   version: string;
   exportedAt: string;
   _guia_de_formato?: {
@@ -954,7 +954,7 @@ export const StorageService = {
     const customExercises = allExercises.filter((ex) => !defaultIds.has(ex.id));
 
     return {
-      appName: 'FitTrack',
+      appName: 'fitGo',
       version: APP_VERSION,
       exportedAt: nowIso,
       profile: this.getUserProfile(),
@@ -973,6 +973,7 @@ export const StorageService = {
       throw new Error('El archivo de respaldo no es válido.');
     }
     const hasValidKeys =
+      payload.appName === 'fitGo' ||
       payload.appName === 'FitTrack' ||
       payload.profile !== undefined ||
       Array.isArray(payload.workoutSessions) ||
@@ -980,7 +981,7 @@ export const StorageService = {
       Array.isArray(payload.weightRecords);
 
     if (!hasValidKeys) {
-      throw new Error('El archivo seleccionado no pertenece a un respaldo de FitTrack.');
+      throw new Error('El archivo seleccionado no pertenece a un respaldo de fitGo.');
     }
 
     // Clear existing SQLite tables before re-hydrating
@@ -1050,12 +1051,12 @@ export const StorageService = {
   // --- Routines & Exercises JSON Template / Export / Import (v1.0.5) ---
   getRoutinesJsonTemplate(): RoutinesJsonPackage {
     return {
-      format: 'fittrack-routines-v1',
+      format: 'fitgo-routines-v1',
       version: APP_VERSION,
       exportedAt: new Date().toISOString(),
       _guia_de_formato: {
         instrucciones:
-          'Llena la lista de "exercises" (si deseas agregar ejercicios nuevos al catálogo) y la lista de "routines" con tus rutinas. Si un ejercicio dentro de una rutina aún no existe en el catálogo, FitTrack lo creará automáticamente por su nombre ("exerciseName").',
+          'Llena la lista de "exercises" (si deseas agregar ejercicios nuevos al catálogo) y la lista de "routines" con tus rutinas. Si un ejercicio dentro de una rutina aún no existe en el catálogo, fitGo lo creará automáticamente por su nombre ("exerciseName").',
         grupos_musculares_validos: [
           'pecho',
           'espalda',
@@ -1154,7 +1155,7 @@ export const StorageService = {
     const customExercises = allExercises.filter((ex) => !defaultIds.has(ex.id));
 
     return {
-      format: 'fittrack-routines-v1',
+      format: 'fitgo-routines-v1',
       version: APP_VERSION,
       exportedAt: new Date().toISOString(),
       _guia_de_formato: this.getRoutinesJsonTemplate()._guia_de_formato,

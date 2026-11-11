@@ -136,7 +136,7 @@ export const ProfilePage: React.FC = () => {
     const payload = StorageService.exportBackupData();
     setLastBackupAt(payload.exportedAt);
     const datePart = getLocalDateString();
-    const fileName = `fittrack-respaldo-${datePart}.json`;
+    const fileName = `fitgo-respaldo-${datePart}.json`;
     const jsonString = JSON.stringify(payload, null, 2);
 
     // 1. Native Android / iOS via @capacitor/filesystem + @capacitor/share
@@ -144,7 +144,7 @@ export const ProfilePage: React.FC = () => {
       try {
         // Also save a persistent internal copy in Directory.Data so we can always verify it on device
         await Filesystem.writeFile({
-          path: 'fittrack-ultimo-respaldo.json',
+          path: 'fitgo-ultimo-respaldo.json',
           data: jsonString,
           directory: Directory.Data,
           encoding: Encoding.UTF8,
@@ -188,8 +188,8 @@ export const ProfilePage: React.FC = () => {
       const file = new File([jsonString], fileName, { type: 'application/json' });
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
-          title: `Respaldo FitTrack (${datePart})`,
-          text: 'Guarda este archivo en tu Google Drive para respaldar tu progreso de FitTrack.',
+          title: `Respaldo fitGo (${datePart})`,
+          text: 'Guarda este archivo en tu Google Drive para respaldar tu progreso de fitGo.',
           files: [file],
         });
       } else {
@@ -218,20 +218,20 @@ export const ProfilePage: React.FC = () => {
     const payload = StorageService.exportBackupData();
     setLastBackupAt(payload.exportedAt);
     const datePart = getLocalDateString();
-    const fileName = `fittrack-respaldo-${datePart}.json`;
+    const fileName = `fitgo-respaldo-${datePart}.json`;
     const jsonString = JSON.stringify(payload, null, 2);
 
     if (Capacitor.isNativePlatform()) {
       try {
         // Save in internal Data storage AND Documents (if permitted)
         await Filesystem.writeFile({
-          path: 'fittrack-ultimo-respaldo.json',
+          path: 'fitgo-ultimo-respaldo.json',
           data: jsonString,
           directory: Directory.Data,
           encoding: Encoding.UTF8,
         });
 
-        let savedPath = 'Almacenamiento interno de FitTrack';
+        let savedPath = 'Almacenamiento interno de fitGo';
         try {
           await Filesystem.writeFile({
             path: fileName,
@@ -285,12 +285,20 @@ export const ProfilePage: React.FC = () => {
     if (Capacitor.isNativePlatform()) {
       try {
         const stat = await Filesystem.stat({
-          path: 'fittrack-ultimo-respaldo.json',
+          path: 'fitgo-ultimo-respaldo.json',
           directory: Directory.Data,
         });
         nativeSavedExists = Boolean(stat?.uri);
       } catch {
-        nativeSavedExists = false;
+        try {
+          const legacyStat = await Filesystem.stat({
+            path: 'fittrack-ultimo-respaldo.json',
+            directory: Directory.Data,
+          });
+          nativeSavedExists = Boolean(legacyStat?.uri);
+        } catch {
+          nativeSavedExists = false;
+        }
       }
     }
 
@@ -323,17 +331,18 @@ export const ProfilePage: React.FC = () => {
       if (
         !parsed ||
         typeof parsed !== 'object' ||
-        (parsed.appName !== 'FitTrack' &&
+        (parsed.appName !== 'fitGo' &&
+          parsed.appName !== 'FitTrack' &&
           !Array.isArray(parsed.workoutSessions) &&
           !Array.isArray(parsed.routines))
       ) {
-        setErrorMessage('El archivo seleccionado no es un respaldo válido de FitTrack.');
+        setErrorMessage('El archivo seleccionado no es un respaldo válido de fitGo.');
         return;
       }
       setErrorMessage('');
       setPendingRestorePayload(parsed);
     } catch {
-      setErrorMessage('No se pudo leer el archivo JSON. Asegúrate de elegir un respaldo de FitTrack.');
+      setErrorMessage('No se pudo leer el archivo JSON. Asegúrate de elegir un respaldo de fitGo.');
     } finally {
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
@@ -348,7 +357,7 @@ export const ProfilePage: React.FC = () => {
       refreshData();
       setLastBackupAt(StorageService.getLastBackupDate());
       setPendingRestorePayload(null);
-      setToastText('✅ ¡Progreso restaurado exitosamente desde el respaldo!');
+      setToastText('Progreso restaurado exitosamente desde el respaldo.');
       setShowToast(true);
     } catch (err: any) {
       setErrorMessage(err?.message || 'Error al restaurar el respaldo.');
@@ -488,11 +497,11 @@ export const ProfilePage: React.FC = () => {
               transition: 'transform 0.12s ease',
               boxShadow: '0 4px 16px rgba(0, 0, 0, 0.25)',
             }}
-            title="FitTrack Logo"
+            title="fitGo Logo"
           >
             <img
               src="/icon-192.png"
-              alt="FitTrack Logo"
+              alt="fitGo Logo"
               style={{ width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none' }}
             />
           </div>

@@ -109,7 +109,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onComp
     <IonModal isOpen={isOpen} backdropDismiss={false}>
       <IonHeader>
         <IonToolbar color="primary">
-          <IonTitle>¡Bienvenido a FitTrack!</IonTitle>
+          <IonTitle>¡Bienvenido a fitGo!</IonTitle>
         </IonToolbar>
       </IonHeader>
 

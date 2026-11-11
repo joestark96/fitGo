@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'io.fittrack.app',
-  appName: 'FitTrack',
+  appName: 'fitGo',
   webDir: 'dist',
   plugins: {
     CapacitorSQLite: {

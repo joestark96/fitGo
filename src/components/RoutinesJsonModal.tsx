@@ -103,7 +103,7 @@ export const RoutinesJsonModal: React.FC<RoutinesJsonModalProps> = ({
     const jsonStr = JSON.stringify(template, null, 2);
     await saveOrShareJsonFile(
       jsonStr,
-      'fittrack-formato-rutinas.json',
+      'fitgo-formato-rutinas.json',
       'Guardar Formato JSON de Rutinas'
     );
   };
@@ -125,7 +125,7 @@ export const RoutinesJsonModal: React.FC<RoutinesJsonModalProps> = ({
     setErrorMsg(null);
     const exported = StorageService.exportRoutinesAndExercises();
     const jsonStr = JSON.stringify(exported, null, 2);
-    const fileName = `fittrack-mis-rutinas-${getLocalDateString()}.json`;
+    const fileName = `fitgo-mis-rutinas-${getLocalDateString()}.json`;
     await saveOrShareJsonFile(jsonStr, fileName, 'Exportar Mis Rutinas JSON');
   };
 

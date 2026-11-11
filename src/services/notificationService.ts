@@ -185,8 +185,8 @@ class NotificationService {
         notifications: [
           {
             id: 99999,
-            title: '🐾 ¡Easter Egg Desbloqueado!',
-            body: '¡Has descubierto el secreto de FitTrack tocando el logo 12 veces! Modo desarrollador fit activado 💪🚀',
+            title: 'Easter Egg Desbloqueado',
+            body: 'Has descubierto el secreto de fitGo tocando el logo 12 veces. Modo desarrollador fit activado.',
             channelId: WORKOUT_CHANNEL_ID,
             schedule: {
               at: new Date(Date.now() + 300),

@@ -50,7 +50,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
               >
                 <img
                   src="/favicon.png"
-                  alt="FitTrack"
+                  alt="fitGo"
                   style={{
                     width: '32px',
                     height: '32px',
@@ -68,7 +68,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                       color: 'var(--ion-text-color)',
                     }}
                   >
-                    FitTrack
+                    fitGo
                   </div>
                   {subtitle && (
                     <div
