@@ -437,8 +437,17 @@ export const ProfilePage: React.FC = () => {
       setBirthDate(profile.birthDate || '');
       setGender(profile.gender || 'male');
       setHeight(profile.height ? profile.height.toString() : '170');
-      setTargetWeight(profile.targetWeight ? profile.targetWeight.toString() : '');
-      setPreferredWeightUnit(profile.preferredWeightUnit || 'kg');
+      const unit = profile.preferredWeightUnit || 'kg';
+      setPreferredWeightUnit(unit);
+      if (profile.targetWeight) {
+        const dispWeight =
+          unit === 'lb'
+            ? Number((profile.targetWeight * 2.20462262).toFixed(1))
+            : Number(profile.targetWeight.toFixed(1));
+        setTargetWeight(dispWeight.toString());
+      } else {
+        setTargetWeight('');
+      }
       setWeekStartDay(profile.weekStartDay !== undefined ? profile.weekStartDay : 1);
     }
   }, [profile]);
@@ -454,13 +463,20 @@ export const ProfilePage: React.FC = () => {
       return;
     }
 
+    const parsedTarget = parseFloat(targetWeight);
+    const targetWeightKg = !isNaN(parsedTarget) && parsedTarget > 0
+      ? preferredWeightUnit === 'lb'
+        ? Number((parsedTarget / 2.20462262).toFixed(1))
+        : parsedTarget
+      : undefined;
+
     const updatedProfile: UserProfile = {
       name: name.trim(),
       birthDate,
       gender,
       height: heightNum,
       initialWeight: profile ? profile.initialWeight : undefined,
-      targetWeight: targetWeight ? parseFloat(targetWeight) : undefined,
+      targetWeight: targetWeightKg,
       preferredWeightUnit: preferredWeightUnit,
       weekStartDay: weekStartDay,
       createdAt: profile ? profile.createdAt : new Date().toISOString(),
@@ -913,10 +929,10 @@ export const ProfilePage: React.FC = () => {
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginBottom: '8px' }}>
                   <input
                     type="number"
-                    step="0.5"
+                    step={preferredWeightUnit === 'lb' ? '1' : '0.5'}
                     inputMode="decimal"
                     value={targetWeight}
-                    placeholder="70"
+                    placeholder={preferredWeightUnit === 'lb' ? '154' : '70'}
                     onChange={(e) => setTargetWeight(e.target.value)}
                     style={{
                       background: 'transparent',
@@ -925,21 +941,24 @@ export const ProfilePage: React.FC = () => {
                       color: 'var(--ion-text-color)',
                       fontWeight: 900,
                       fontSize: '1.5rem',
-                      width: '72px',
+                      width: '78px',
                     }}
                   />
                   <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--ion-color-medium)' }}>
-                    kg
+                    {preferredWeightUnit}
                   </span>
                 </div>
                 <div style={{ display: 'flex', gap: '6px' }}>
                   <button
                     type="button"
-                    onClick={() =>
+                    onClick={() => {
+                      const stepVal = preferredWeightUnit === 'lb' ? 1 : 0.5;
+                      const minVal = preferredWeightUnit === 'lb' ? 75 : 35;
+                      const fallback = preferredWeightUnit === 'lb' ? 154 : 70;
                       setTargetWeight(
-                        String(Math.max(35, Number(((parseFloat(targetWeight) || 70) - 0.5).toFixed(1))))
-                      )
-                    }
+                        String(Math.max(minVal, Number(((parseFloat(targetWeight) || fallback) - stepVal).toFixed(1))))
+                      );
+                    }}
                     style={{
                       flex: 1,
                       padding: '5px 0',
@@ -952,15 +971,18 @@ export const ProfilePage: React.FC = () => {
                       cursor: 'pointer',
                     }}
                   >
-                    -0.5
+                    {preferredWeightUnit === 'lb' ? '-1' : '-0.5'}
                   </button>
                   <button
                     type="button"
-                    onClick={() =>
+                    onClick={() => {
+                      const stepVal = preferredWeightUnit === 'lb' ? 1 : 0.5;
+                      const maxVal = preferredWeightUnit === 'lb' ? 550 : 250;
+                      const fallback = preferredWeightUnit === 'lb' ? 154 : 70;
                       setTargetWeight(
-                        String(Math.min(250, Number(((parseFloat(targetWeight) || 70) + 0.5).toFixed(1))))
-                      )
-                    }
+                        String(Math.min(maxVal, Number(((parseFloat(targetWeight) || fallback) + stepVal).toFixed(1))))
+                      );
+                    }}
                     style={{
                       flex: 1,
                       padding: '5px 0',
@@ -973,7 +995,7 @@ export const ProfilePage: React.FC = () => {
                       cursor: 'pointer',
                     }}
                   >
-                    +0.5
+                    {preferredWeightUnit === 'lb' ? '+1' : '+0.5'}
                   </button>
                 </div>
               </div>
@@ -982,11 +1004,18 @@ export const ProfilePage: React.FC = () => {
             {/* Live Target BMI Preview Pill */}
             {(() => {
               const hNum = parseFloat(height);
-              const twNum = parseFloat(targetWeight);
+              const rawTw = parseFloat(targetWeight);
+              const twNum = !isNaN(rawTw)
+                ? preferredWeightUnit === 'lb'
+                  ? rawTw / 2.20462262
+                  : rawTw
+                : NaN;
               if (!isNaN(hNum) && hNum >= 100 && !isNaN(twNum) && twNum >= 30) {
                 const targetBmi = twNum / Math.pow(hNum / 100, 2);
-                const healthyMin = (18.5 * Math.pow(hNum / 100, 2)).toFixed(0);
-                const healthyMax = (24.9 * Math.pow(hNum / 100, 2)).toFixed(0);
+                const healthyMinKg = 18.5 * Math.pow(hNum / 100, 2);
+                const healthyMaxKg = 24.9 * Math.pow(hNum / 100, 2);
+                const healthyMin = (preferredWeightUnit === 'lb' ? healthyMinKg * 2.20462262 : healthyMinKg).toFixed(0);
+                const healthyMax = (preferredWeightUnit === 'lb' ? healthyMaxKg * 2.20462262 : healthyMaxKg).toFixed(0);
                 const isHealthy = targetBmi >= 18.5 && targetBmi <= 24.9;
                 return (
                   <div
@@ -1009,7 +1038,7 @@ export const ProfilePage: React.FC = () => {
                     <span style={{ color: 'var(--ion-color-medium)', fontWeight: 600 }}>
                       Rango ideal para {hNum} cm:{' '}
                       <strong style={{ color: 'var(--ion-text-color)' }}>
-                        {healthyMin} – {healthyMax} kg
+                        {healthyMin} – {healthyMax} {preferredWeightUnit}
                       </strong>
                     </span>
                     <span
@@ -1061,7 +1090,18 @@ export const ProfilePage: React.FC = () => {
                     <button
                       key={u.value}
                       type="button"
-                      onClick={() => setPreferredWeightUnit(u.value)}
+                      onClick={() => {
+                        if (u.value === preferredWeightUnit) return;
+                        const cur = parseFloat(targetWeight);
+                        if (!isNaN(cur) && cur > 0) {
+                          const converted =
+                            u.value === 'lb'
+                              ? Number((cur * 2.20462262).toFixed(1))
+                              : Number((cur / 2.20462262).toFixed(1));
+                          setTargetWeight(converted.toString());
+                        }
+                        setPreferredWeightUnit(u.value);
+                      }}
                       style={{
                         padding: '9px 10px',
                         borderRadius: '10px',

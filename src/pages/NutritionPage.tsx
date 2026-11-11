@@ -38,17 +38,20 @@ import {
   footstepsOutline,
   barbellOutline,
   watchOutline,
+  bookOutline,
 } from 'ionicons/icons';
 import { useApp } from '../context/AppContext';
 import { FoodEntry, MealType, ActivityLevel, DailyActivity } from '../types';
 import { formatDateDDMMYYYY, getLocalDateString, addDaysToDateString } from '../services/storage';
 import { FoodEntryModal } from '../components/FoodEntryModal';
+import { FoodCatalogModal } from '../components/FoodCatalogModal';
 import { DailyActivityModal } from '../components/DailyActivityModal';
 import { AppHeader } from '../components/AppHeader';
 
 export const NutritionPage: React.FC = () => {
   const {
     foodEntries,
+    saveFoodEntry,
     deleteFoodEntry,
     calorieRecommendation,
     activityLevel,
@@ -62,6 +65,7 @@ export const NutritionPage: React.FC = () => {
   // Current selected date in YYYY-MM-DD (device local date, avoiding UTC shift)
   const [selectedDate, setSelectedDate] = useState<string>(() => getLocalDateString());
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCatalogOpen, setIsCatalogOpen] = useState(false);
   const [showActivityAlert, setShowActivityAlert] = useState(false);
   const [entryToEdit, setEntryToEdit] = useState<FoodEntry | null>(null);
   const [defaultMealType, setDefaultMealType] = useState<MealType>('almuerzo');
@@ -127,20 +131,36 @@ export const NutritionPage: React.FC = () => {
       <AppHeader
         subtitle="Calorías & Macros"
         rightAction={
-          <IonButton
-            fill="clear"
-            size="small"
-            onClick={() => openCreateModal('almuerzo')}
-            style={{
-              background: 'rgba(14, 165, 233, 0.12)',
-              borderRadius: '12px',
-              fontWeight: 700,
-              color: 'var(--ion-color-primary)',
-            }}
-          >
-            <IonIcon slot="start" icon={addOutline} />
-            Comida
-          </IonButton>
+          <div style={{ display: 'flex', gap: '6px' }}>
+            <IonButton
+              fill="clear"
+              size="small"
+              onClick={() => setIsCatalogOpen(true)}
+              style={{
+                background: 'rgba(56, 189, 248, 0.12)',
+                borderRadius: '12px',
+                fontWeight: 700,
+                color: '#38bdf8',
+              }}
+            >
+              <IonIcon slot="start" icon={bookOutline} />
+              Catálogo
+            </IonButton>
+            <IonButton
+              fill="clear"
+              size="small"
+              onClick={() => openCreateModal('almuerzo')}
+              style={{
+                background: 'rgba(14, 165, 233, 0.12)',
+                borderRadius: '12px',
+                fontWeight: 700,
+                color: 'var(--ion-color-primary)',
+              }}
+            >
+              <IonIcon slot="start" icon={addOutline} />
+              Comida
+            </IonButton>
+          </div>
         }
       />
 
@@ -432,6 +452,51 @@ export const NutritionPage: React.FC = () => {
           </IonCardContent>
         </IonCard>
 
+        {/* Quick Access Card to Food & Portions Catalog */}
+        <div
+          onClick={() => setIsCatalogOpen(true)}
+          style={{
+            marginBottom: '16px',
+            padding: '12px 16px',
+            borderRadius: '16px',
+            background: 'linear-gradient(135deg, rgba(14, 165, 233, 0.14), rgba(37, 99, 235, 0.12))',
+            border: '1px solid rgba(56, 189, 248, 0.35)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '12px',
+            cursor: 'pointer',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div
+              style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '12px',
+                background: 'rgba(56, 189, 248, 0.2)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <IonIcon icon={bookOutline} style={{ fontSize: '1.3rem', color: '#38bdf8' }} />
+            </div>
+            <div>
+              <div style={{ fontWeight: 800, fontSize: '0.92rem', color: 'var(--ion-text-color)' }}>
+                Catálogo de Alimentos y Platillos
+              </div>
+              <div style={{ fontSize: '0.76rem', color: 'var(--ion-color-medium)' }}>
+                Consulta calorías, macros y porción aproximada (gramos, tazas, piezas)
+              </div>
+            </div>
+          </div>
+          <IonBadge color="primary" style={{ padding: '6px 10px', borderRadius: '8px', flexShrink: 0 }}>
+            Abrir
+          </IonBadge>
+        </div>
+
         {/* Breakdown by Meals */}
         {mealConfig.map((meal) => {
           const entries = dayEntries.filter((f) => f.mealType === meal.type);
@@ -552,6 +617,29 @@ export const NutritionPage: React.FC = () => {
           }}
           onSaved={() => {
             setToastMessage('Comida registrada correctamente');
+          }}
+        />
+
+        {/* Food & Dishes Catalog Modal */}
+        <FoodCatalogModal
+          isOpen={isCatalogOpen}
+          onClose={() => setIsCatalogOpen(false)}
+          defaultMealType={defaultMealType}
+          actionLabel="Registrar"
+          onSelectFood={(sel) => {
+            saveFoodEntry({
+              id: 'food-' + Date.now(),
+              date: selectedDate,
+              mealType: sel.mealType,
+              name: sel.name,
+              calories: sel.calories,
+              proteinGrams: sel.protein,
+              carbsGrams: sel.carbs,
+              fatGrams: sel.fat,
+              notes: sel.portionNote,
+              createdAt: new Date().toISOString(),
+            });
+            setToastMessage(`Registrado: ${sel.name} (${sel.calories} kcal)`);
           }}
         />
 

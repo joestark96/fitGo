@@ -166,15 +166,37 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
 
   // Weight units state per exercise ('kg' | 'lb')
   const [exerciseWeightUnits, setExerciseWeightUnits] = useState<Record<number, 'kg' | 'lb'>>({});
+  const [editingSetWeights, setEditingSetWeights] = useState<Record<string, string>>({});
 
   const defaultUnit = profile?.preferredWeightUnit || 'kg';
   const getWeightUnit = (exIdx: number): 'kg' | 'lb' => exerciseWeightUnits[exIdx] || defaultUnit;
 
   const toggleWeightUnit = (exIdx: number) => {
+    const currentUnit = exerciseWeightUnits[exIdx] || defaultUnit;
+    const nextUnit: 'kg' | 'lb' = currentUnit === 'lb' ? 'kg' : 'lb';
     setExerciseWeightUnits((prev) => ({
       ...prev,
-      [exIdx]: (prev[exIdx] || defaultUnit) === 'lb' ? 'kg' : 'lb',
+      [exIdx]: nextUnit,
     }));
+    // Cleanly convert currently stored edit weights when switching unit
+    setEditingSetWeights((prev) => {
+      const next = { ...prev };
+      Object.keys(next).forEach((k) => {
+        if (k.startsWith(`${exIdx}-`)) {
+          const num = parseFloat(next[k]);
+          if (!isNaN(num)) {
+            const converted =
+              nextUnit === 'lb'
+                ? Number((num * 2.20462262).toFixed(1))
+                : Number((num / 2.20462262).toFixed(1));
+            next[k] = converted.toString();
+          } else {
+            delete next[k];
+          }
+        }
+      });
+      return next;
+    });
   };
 
   // Active editing set to display "Usado hace poco" drawer
@@ -391,6 +413,11 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
     item: { weightKg?: number; reps?: number; durationSeconds?: number },
     mode: ExerciseMeasurementMode
   ) => {
+    setEditingSetWeights((prev) => {
+      const next = { ...prev };
+      delete next[`${exIdx}-${setIdx}`];
+      return next;
+    });
     if (mode === 'weight_reps') {
       handleUpdateSetValue(
         exIdx,
@@ -1543,15 +1570,17 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
                             {exercise.mode === 'weight_reps' && (
                               <>
                                 <div style={{ padding: '0 4px' }}>
-                                  <IonInput
-                                    type="number"
-                                    step={getWeightUnit(exIdx) === 'lb' ? '1' : '0.5'}
+                                  <input
+                                    type="text"
+                                    inputMode="decimal"
                                     value={
-                                      s.actualWeightKg !== undefined && s.actualWeightKg !== null
-                                        ? getWeightUnit(exIdx) === 'lb'
-                                          ? Number((s.actualWeightKg * 2.20462262).toFixed(1))
-                                          : s.actualWeightKg
-                                        : ''
+                                      editingSetWeights[setKey] !== undefined
+                                        ? editingSetWeights[setKey]
+                                        : s.actualWeightKg !== undefined && s.actualWeightKg !== null
+                                          ? getWeightUnit(exIdx) === 'lb'
+                                            ? Number((s.actualWeightKg * 2.20462262).toFixed(1)).toString()
+                                            : Number(s.actualWeightKg.toFixed(1)).toString()
+                                          : ''
                                     }
                                     placeholder="0"
                                     onFocus={() => {
@@ -1564,8 +1593,13 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
                                         currentKg: s.actualWeightKg || 0,
                                       });
                                     }}
-                                    onBlur={handleInputBlur}
+                                    onBlur={() => {
+                                      handleInputBlur();
+                                      // We do not delete editingSetWeights[setKey] on blur to prevent rounding jumps (e.g. 63 -> 63.1)
+                                    }}
                                     style={{
+                                      width: '100%',
+                                      boxSizing: 'border-box',
                                       textAlign: 'center',
                                       background: isEditingThisSet
                                         ? 'rgba(59, 130, 246, 0.18)'
@@ -1582,10 +1616,26 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
                                       fontSize: '0.95rem',
                                       color: s.completed ? '#10b981' : '#ffffff',
                                       height: '38px',
+                                      outline: 'none',
                                     }}
-                                    onIonInput={(e) => {
-                                      const raw = e.detail.value;
-                                      if (raw === '' || raw === null || raw === undefined) {
+                                    onChange={(e) => {
+                                      let raw = e.target.value.replace(/,/g, '.');
+                                      if (!/^[0-9]*\.?[0-9]*$/.test(raw)) {
+                                        return;
+                                      }
+                                      setEditingSetWeights((prev) => {
+                                        const next: Record<string, string> = { ...prev, [setKey]: raw };
+                                        if (!isSingleEdit && !s.completed) {
+                                          Object.keys(next).forEach((k) => {
+                                            if (k.startsWith(`${exIdx}-`) && k !== setKey) {
+                                              const otherIdx = parseInt(k.split('-').pop() || '0', 10);
+                                              if (otherIdx > setIdx) delete next[k];
+                                            }
+                                          });
+                                        }
+                                        return next;
+                                      });
+                                      if (raw.trim() === '' || raw === '.') {
                                         handleUpdateSetValue(exIdx, setIdx, { actualWeightKg: undefined });
                                         return;
                                       }
@@ -1593,7 +1643,7 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
                                       if (isNaN(val)) return;
                                       const kg =
                                         getWeightUnit(exIdx) === 'lb'
-                                          ? Number((val * 0.45359237).toFixed(1))
+                                          ? Number((val / 2.20462262).toFixed(4))
                                           : val;
                                       handleUpdateSetValue(exIdx, setIdx, {
                                         actualWeightKg: kg,
@@ -1603,15 +1653,18 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
                                 </div>
 
                                 <div style={{ padding: '0 4px' }}>
-                                  <IonInput
-                                    type="number"
-                                    value={s.actualReps ?? ''}
+                                  <input
+                                    type="text"
+                                    inputMode="numeric"
+                                    value={s.actualReps !== undefined && s.actualReps !== null ? s.actualReps.toString() : ''}
                                     placeholder="0"
                                     onFocus={() => {
                                       handleInputFocus(exIdx, setIdx);
                                     }}
                                     onBlur={handleInputBlur}
                                     style={{
+                                      width: '100%',
+                                      boxSizing: 'border-box',
                                       textAlign: 'center',
                                       background: isEditingThisSet
                                         ? 'rgba(59, 130, 246, 0.18)'
@@ -1628,10 +1681,11 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
                                       fontSize: '0.95rem',
                                       color: s.completed ? '#10b981' : '#ffffff',
                                       height: '38px',
+                                      outline: 'none',
                                     }}
-                                    onIonInput={(e) => {
-                                      const raw = e.detail.value;
-                                      if (raw === '' || raw === null || raw === undefined) {
+                                    onChange={(e) => {
+                                      const raw = e.target.value.replace(/\D/g, '');
+                                      if (raw.trim() === '') {
                                         handleUpdateSetValue(exIdx, setIdx, { actualReps: undefined });
                                         return;
                                       }
@@ -1648,13 +1702,16 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
 
                             {exercise.mode === 'reps_only' && (
                               <div style={{ padding: '0 6px' }}>
-                                <IonInput
-                                  type="number"
-                                  value={s.actualReps ?? ''}
+                                <input
+                                  type="text"
+                                  inputMode="numeric"
+                                  value={s.actualReps !== undefined && s.actualReps !== null ? s.actualReps.toString() : ''}
                                   placeholder="10"
                                   onFocus={() => handleInputFocus(exIdx, setIdx)}
                                   onBlur={handleInputBlur}
                                   style={{
+                                    width: '100%',
+                                    boxSizing: 'border-box',
                                     textAlign: 'center',
                                     background: isEditingThisSet
                                       ? 'rgba(59, 130, 246, 0.18)'
@@ -1671,10 +1728,11 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
                                     fontSize: '0.95rem',
                                     color: s.completed ? '#10b981' : '#ffffff',
                                     height: '38px',
+                                    outline: 'none',
                                   }}
-                                  onIonInput={(e) => {
-                                    const raw = e.detail.value;
-                                    if (raw === '' || raw === null || raw === undefined) {
+                                  onChange={(e) => {
+                                    const raw = e.target.value.replace(/\D/g, '');
+                                    if (raw.trim() === '') {
                                       handleUpdateSetValue(exIdx, setIdx, { actualReps: undefined });
                                       return;
                                     }
@@ -1690,13 +1748,16 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
 
                             {exercise.mode === 'duration' && (
                               <div style={{ padding: '0 6px' }}>
-                                <IonInput
-                                  type="number"
-                                  value={s.actualDurationSeconds ?? ''}
+                                <input
+                                  type="text"
+                                  inputMode="numeric"
+                                  value={s.actualDurationSeconds !== undefined && s.actualDurationSeconds !== null ? s.actualDurationSeconds.toString() : ''}
                                   placeholder="30"
                                   onFocus={() => handleInputFocus(exIdx, setIdx)}
                                   onBlur={handleInputBlur}
                                   style={{
+                                    width: '100%',
+                                    boxSizing: 'border-box',
                                     textAlign: 'center',
                                     background: isEditingThisSet
                                       ? 'rgba(59, 130, 246, 0.18)'
@@ -1713,11 +1774,14 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
                                     fontSize: '0.95rem',
                                     color: s.completed ? '#10b981' : '#ffffff',
                                     height: '38px',
+                                    outline: 'none',
                                   }}
-                                  onIonInput={(e) => {
-                                    const raw = e.detail.value;
-                                    if (raw === '' || raw === null || raw === undefined) {
-                                      handleUpdateSetValue(exIdx, setIdx, { actualDurationSeconds: undefined });
+                                  onChange={(e) => {
+                                    const raw = e.target.value.replace(/\D/g, '');
+                                    if (raw.trim() === '') {
+                                      handleUpdateSetValue(exIdx, setIdx, {
+                                        actualDurationSeconds: undefined,
+                                      });
                                       return;
                                     }
                                     const val = parseInt(raw, 10);

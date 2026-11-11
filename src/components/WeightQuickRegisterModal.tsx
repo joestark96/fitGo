@@ -20,6 +20,8 @@ export const WeightQuickRegisterModal: React.FC<WeightQuickRegisterModalProps> =
 
   const [unit, setUnit] = useState<'kg' | 'lbs'>(() => profile?.preferredWeightUnit === 'lb' ? 'lbs' : 'kg');
   const [currentVal, setCurrentVal] = useState<number>(90.7);
+  const [rawInputStr, setRawInputStr] = useState<string>('90.7');
+  const [isEditingInput, setIsEditingInput] = useState<boolean>(false);
   const [selectedDate, setSelectedDate] = useState<string>(() => {
     const now = new Date();
     const y = now.getFullYear();
@@ -53,13 +55,17 @@ export const WeightQuickRegisterModal: React.FC<WeightQuickRegisterModalProps> =
         initialKg = profile.targetWeight;
       }
 
-      const initialVal = unit === 'kg'
+      const startUnit = profile?.preferredWeightUnit === 'lb' ? 'lbs' : 'kg';
+      setUnit(startUnit);
+      const initialVal = startUnit === 'kg'
         ? Number(initialKg.toFixed(1))
         : Number((initialKg * 2.20462).toFixed(1));
 
       setCurrentVal(initialVal);
+      setRawInputStr(initialVal.toFixed(1));
+      setIsEditingInput(false);
     }
-  }, [isOpen, weightRecords, profile, unit]);
+  }, [isOpen, weightRecords, profile]);
 
   // Touch drag handlers
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -126,6 +132,8 @@ export const WeightQuickRegisterModal: React.FC<WeightQuickRegisterModalProps> =
     }
     setUnit(newUnit);
     setCurrentVal(converted);
+    setRawInputStr(converted.toFixed(1));
+    setIsEditingInput(false);
   };
 
   // Date label formatting ("Hoy", "Ayer", or "2 nov")
@@ -383,7 +391,7 @@ export const WeightQuickRegisterModal: React.FC<WeightQuickRegisterModalProps> =
           </div>
         </div>
 
-        {/* ================= BIG WEIGHT DISPLAY ================= */}
+        {/* ================= BIG WEIGHT DISPLAY (EDITABLE INPUT) ================= */}
         <div
           style={{
             display: 'flex',
@@ -393,7 +401,36 @@ export const WeightQuickRegisterModal: React.FC<WeightQuickRegisterModalProps> =
             gap: '6px',
           }}
         >
-          <span
+          <input
+            type="number"
+            step="0.1"
+            inputMode="decimal"
+            value={isEditingInput ? rawInputStr : currentVal.toFixed(1)}
+            onFocus={() => {
+              setIsEditingInput(true);
+              setRawInputStr(currentVal.toFixed(1));
+            }}
+            onBlur={() => {
+              setIsEditingInput(false);
+              const parsed = parseFloat(rawInputStr);
+              if (!isNaN(parsed) && parsed > 0) {
+                const clamped = Math.min(Math.max(parsed, minLimit), maxLimit);
+                const rounded = Math.round(clamped * 10) / 10;
+                setCurrentVal(rounded);
+                setRawInputStr(rounded.toFixed(1));
+              } else {
+                setRawInputStr(currentVal.toFixed(1));
+              }
+            }}
+            onChange={(e) => {
+              const valStr = e.target.value;
+              setRawInputStr(valStr);
+              const parsed = parseFloat(valStr);
+              if (!isNaN(parsed) && parsed > 0) {
+                const clamped = Math.min(Math.max(parsed, minLimit), maxLimit);
+                setCurrentVal(Math.round(clamped * 10) / 10);
+              }
+            }}
             style={{
               fontSize: '2.8rem',
               fontWeight: 800,
@@ -401,10 +438,15 @@ export const WeightQuickRegisterModal: React.FC<WeightQuickRegisterModalProps> =
               lineHeight: 1,
               fontVariantNumeric: 'tabular-nums',
               letterSpacing: '-0.03em',
+              background: isEditingInput ? 'rgba(59, 130, 246, 0.14)' : 'transparent',
+              border: isEditingInput ? '1.5px solid #3b82f6' : '1.5px solid transparent',
+              borderRadius: '12px',
+              padding: '2px 8px',
+              width: '150px',
+              textAlign: 'center',
+              outline: 'none',
             }}
-          >
-            {currentVal.toFixed(1)}
-          </span>
+          />
           <span
             style={{
               fontSize: '1.15rem',

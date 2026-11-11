@@ -33,11 +33,15 @@ import {
   closeCircleOutline,
   cafeOutline,
   moonOutline,
+  bookOutline,
+  scaleOutline,
 } from 'ionicons/icons';
 import { useApp } from '../context/AppContext';
 import { FoodEntry, MealType } from '../types';
 import { getLocalDateString } from '../services/storage';
 import { DateInput } from './DateInput';
+import { DEFAULT_FOOD_CATALOG } from '../data/defaultFoods';
+import { FoodCatalogModal } from './FoodCatalogModal';
 
 interface FoodEntryModalProps {
   isOpen: boolean;
@@ -57,37 +61,24 @@ export interface FoodPresetItem {
   carbs?: number;
   fat?: number;
   notes?: string;
+  portion?: string;
   source: 'history' | 'preset';
   timesLogged?: number;
   lastDate?: string;
 }
 
-const QUICK_FOOD_PRESETS: FoodPresetItem[] = [
-  // Desayuno
-  { name: 'Huevos revueltos con tostadas', calories: 340, meal: 'desayuno', protein: 18, carbs: 26, fat: 16, source: 'preset' },
-  { name: 'Avena con leche y plátano', calories: 380, meal: 'desayuno', protein: 14, carbs: 65, fat: 7, source: 'preset' },
-  { name: 'Yogur griego con frutos rojos', calories: 210, meal: 'desayuno', protein: 17, carbs: 22, fat: 4, source: 'preset' },
-  { name: 'Café con leche y tostada con pavo', calories: 230, meal: 'desayuno', protein: 15, carbs: 24, fat: 6, source: 'preset' },
-  { name: 'Hot cakes de avena y clara de huevo', calories: 310, meal: 'desayuno', protein: 22, carbs: 42, fat: 5, source: 'preset' },
-  // Almuerzo
-  { name: 'Pechuga de pollo con arroz y ensalada', calories: 520, meal: 'almuerzo', protein: 44, carbs: 58, fat: 10, source: 'preset' },
-  { name: 'Filete de ternera con patatas al horno', calories: 580, meal: 'almuerzo', protein: 48, carbs: 45, fat: 20, source: 'preset' },
-  { name: 'Salmón a la plancha con verduras', calories: 490, meal: 'almuerzo', protein: 38, carbs: 18, fat: 28, source: 'preset' },
-  { name: 'Pasta boloñesa magra', calories: 540, meal: 'almuerzo', protein: 32, carbs: 72, fat: 14, source: 'preset' },
-  { name: 'Bowl de atún con quinoa y aguacate', calories: 480, meal: 'almuerzo', protein: 36, carbs: 48, fat: 16, source: 'preset' },
-  // Cena
-  { name: 'Ensalada completa con atún y huevo', calories: 360, meal: 'cena', protein: 30, carbs: 12, fat: 18, source: 'preset' },
-  { name: 'Tortilla francesa con queso y tomate', calories: 320, meal: 'cena', protein: 20, carbs: 6, fat: 22, source: 'preset' },
-  { name: 'Pechuga a la plancha con puré de calabaza', calories: 370, meal: 'cena', protein: 40, carbs: 32, fat: 6, source: 'preset' },
-  { name: 'Sopa de verduras con pollo desmenuzado', calories: 290, meal: 'cena', protein: 26, carbs: 24, fat: 7, source: 'preset' },
-  { name: 'Tacos de pescado blanco a la plancha', calories: 380, meal: 'cena', protein: 34, carbs: 36, fat: 8, source: 'preset' },
-  // Snacks
-  { name: 'Batido de proteína de suero', calories: 150, meal: 'snack', protein: 25, carbs: 4, fat: 2, source: 'preset' },
-  { name: 'Manzana con crema de cacahuate', calories: 210, meal: 'snack', protein: 6, carbs: 28, fat: 10, source: 'preset' },
-  { name: 'Puñado de frutos secos (30g)', calories: 180, meal: 'snack', protein: 5, carbs: 6, fat: 16, source: 'preset' },
-  { name: 'Barra de proteína energética', calories: 200, meal: 'snack', protein: 15, carbs: 22, fat: 6, source: 'preset' },
-  { name: 'Arroz inflado con requesón y miel', calories: 160, meal: 'snack', protein: 11, carbs: 24, fat: 2, source: 'preset' },
-];
+const QUICK_FOOD_PRESETS: FoodPresetItem[] = DEFAULT_FOOD_CATALOG.map((item) => ({
+  id: item.id,
+  name: item.name,
+  calories: item.calories,
+  meal: item.defaultMeal,
+  protein: item.protein,
+  carbs: item.carbs,
+  fat: item.fat,
+  portion: item.portion,
+  notes: `Porción: ${item.portion}`,
+  source: 'preset' as const,
+}));
 
 export const FoodEntryModal: React.FC<FoodEntryModalProps> = ({
   isOpen,
@@ -114,6 +105,7 @@ export const FoodEntryModal: React.FC<FoodEntryModalProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [activeSuggestionTab, setActiveSuggestionTab] = useState<'history' | 'presets'>('history');
   const [isNameFocused, setIsNameFocused] = useState(false);
+  const [isCatalogOpen, setIsCatalogOpen] = useState(false);
 
   // Derive unique past foods previously entered by the user
   const userFoodHistory: FoodPresetItem[] = useMemo(() => {
@@ -200,7 +192,7 @@ export const FoodEntryModal: React.FC<FoodEntryModalProps> = ({
     if (preset.notes) {
       setNotes(preset.notes);
     }
-    setLoadedFrom(`${preset.source === 'history' ? '🕒 Historial' : '✨ Sugerencia'}: ${preset.name} (${preset.calories} kcal)`);
+    setLoadedFrom(`${preset.source === 'history' ? 'Historial' : 'Catálogo'}: ${preset.name} (${preset.calories} kcal)`);
     setSearchQuery('');
     setErrorMessage('');
   };
@@ -310,14 +302,46 @@ export const FoodEntryModal: React.FC<FoodEntryModalProps> = ({
                 interface="popover"
                 onIonChange={(e) => setMealType(e.detail.value)}
               >
-                <IonSelectOption value="desayuno">🌅 Desayuno</IonSelectOption>
-                <IonSelectOption value="almuerzo">🍽️ Almuerzo</IonSelectOption>
-                <IonSelectOption value="cena">🌙 Cena</IonSelectOption>
-                <IonSelectOption value="snack">🥪 Snack / Merienda</IonSelectOption>
+                <IonSelectOption value="desayuno">Desayuno</IonSelectOption>
+                <IonSelectOption value="almuerzo">Almuerzo</IonSelectOption>
+                <IonSelectOption value="cena">Cena</IonSelectOption>
+                <IonSelectOption value="snack">Snack / Merienda</IonSelectOption>
               </IonSelect>
             </IonItem>
           </IonCardContent>
         </IonCard>
+
+        {/* Botón para abrir el Catálogo de Alimentos y Porciones */}
+        <div
+          onClick={() => setIsCatalogOpen(true)}
+          style={{
+            marginBottom: '12px',
+            padding: '10px 14px',
+            borderRadius: '14px',
+            background: 'rgba(56, 189, 248, 0.12)',
+            border: '1px solid rgba(56, 189, 248, 0.35)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            cursor: 'pointer',
+            gap: '10px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <IonIcon icon={bookOutline} style={{ fontSize: '1.3rem', color: '#38bdf8', flexShrink: 0 }} />
+            <div>
+              <div style={{ fontWeight: 800, fontSize: '0.86rem', color: '#ffffff' }}>
+                Catálogo de Alimentos, Platillos y Porciones
+              </div>
+              <div style={{ fontSize: '0.73rem', color: '#94a3b8' }}>
+                Consulta calorías por porción (taza, gramos, piezas) y elige 0.5x a 2x
+              </div>
+            </div>
+          </div>
+          <IonBadge color="primary" style={{ fontSize: '0.72rem', padding: '5px 8px' }}>
+            Ver Catálogo
+          </IonBadge>
+        </div>
 
         {/* ================= BUSCADOR DE ALIMENTOS ================= */}
         <div style={{ marginBottom: '14px' }}>
@@ -424,6 +448,11 @@ export const FoodEntryModal: React.FC<FoodEntryModalProps> = ({
                       >
                         {item.name}
                       </div>
+                      {(item.portion || item.notes) && (
+                        <div style={{ fontSize: '0.72rem', color: '#38bdf8', marginTop: '2px', fontWeight: 600 }}>
+                          Porción: {item.portion || item.notes}
+                        </div>
+                      )}
                       {(item.protein != null || item.carbs != null || item.fat != null) && (
                         <div style={{ fontSize: '0.70rem', color: 'var(--ion-color-medium)', marginTop: '2px' }}>
                           {item.protein != null && <span>P: {item.protein}g • </span>}
@@ -519,7 +548,7 @@ export const FoodEntryModal: React.FC<FoodEntryModalProps> = ({
                     transition: 'all 0.15s ease',
                   }}
                 >
-                  🕒 Previos ({userFoodHistory.length})
+                  Previos ({userFoodHistory.length})
                 </button>
                 <button
                   type="button"
@@ -536,7 +565,7 @@ export const FoodEntryModal: React.FC<FoodEntryModalProps> = ({
                     transition: 'all 0.15s ease',
                   }}
                 >
-                  ✨ Catálogo
+                  Catálogo
                 </button>
               </div>
             )}
@@ -692,7 +721,7 @@ export const FoodEntryModal: React.FC<FoodEntryModalProps> = ({
                   }}
                 >
                   <div style={{ fontSize: '0.70rem', color: 'var(--ion-color-medium)', marginBottom: '4px', fontWeight: 600 }}>
-                    🕒 Coincidencias en tus alimentos previos:
+                    Coincidencias en tus alimentos previos:
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
                     {nameAutocompleteMatches.map((match, mIdx) => (
@@ -760,7 +789,7 @@ export const FoodEntryModal: React.FC<FoodEntryModalProps> = ({
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginTop: '6px' }}>
                 <IonItem lines="none" style={{ '--padding-start': '0' }}>
                   <IonLabel position="stacked" style={{ fontSize: '0.78rem', color: 'var(--ion-color-primary)' }}>
-                    🥩 Proteína (g)
+                    Proteína (g)
                   </IonLabel>
                   <IonInput
                     type="number"
@@ -773,7 +802,7 @@ export const FoodEntryModal: React.FC<FoodEntryModalProps> = ({
 
                 <IonItem lines="none" style={{ '--padding-start': '0' }}>
                   <IonLabel position="stacked" style={{ fontSize: '0.78rem', color: 'var(--ion-color-warning)' }}>
-                    🍚 Carbos (g)
+                    Carbos (g)
                   </IonLabel>
                   <IonInput
                     type="number"
@@ -786,7 +815,7 @@ export const FoodEntryModal: React.FC<FoodEntryModalProps> = ({
 
                 <IonItem lines="none" style={{ '--padding-start': '0' }}>
                   <IonLabel position="stacked" style={{ fontSize: '0.78rem', color: 'var(--ion-color-danger)' }}>
-                    🥑 Grasas (g)
+                    Grasas (g)
                   </IonLabel>
                   <IonInput
                     type="number"
@@ -801,11 +830,11 @@ export const FoodEntryModal: React.FC<FoodEntryModalProps> = ({
 
             <IonItem lines="none">
               <IonLabel position="stacked" style={{ fontWeight: 600 }}>
-                Notas / Porciones (Opcional)
+                Notas / Porción consumida (Opcional)
               </IonLabel>
               <IonTextarea
                 value={notes}
-                placeholder="ej. Porción de 150g, sin salsas"
+                placeholder="ej. Porción de 150g, 1 taza cocida, 3 piezas"
                 rows={2}
                 onIonInput={(e) => setNotes(e.detail.value || '')}
               />
@@ -821,6 +850,25 @@ export const FoodEntryModal: React.FC<FoodEntryModalProps> = ({
           <IonIcon slot="start" icon={saveOutline} />
           {entryToEdit ? 'Guardar Cambios' : 'Registrar Comida'}
         </IonButton>
+
+        {/* Catálogo Completo Modal */}
+        <FoodCatalogModal
+          isOpen={isCatalogOpen}
+          onClose={() => setIsCatalogOpen(false)}
+          defaultMealType={mealType}
+          actionLabel="Elegir"
+          onSelectFood={(sel) => {
+            setMealType(sel.mealType);
+            setName(sel.name);
+            setCalories(sel.calories.toString());
+            setProtein(sel.protein.toString());
+            setCarbs(sel.carbs.toString());
+            setFat(sel.fat.toString());
+            setNotes(sel.portionNote);
+            setLoadedFrom(`Catálogo: ${sel.name} (${sel.calories} kcal)`);
+            setIsCatalogOpen(false);
+          }}
+        />
       </IonContent>
     </IonModal>
   );

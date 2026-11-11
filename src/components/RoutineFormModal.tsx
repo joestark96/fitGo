@@ -108,17 +108,42 @@ export const RoutineFormModal: React.FC<RoutineFormModalProps> = ({
   const [targetSets, setTargetSets] = useState<string>('3');
   const [targetReps, setTargetReps] = useState<string>('10');
   const [targetWeightKg, setTargetWeightKg] = useState<string>('20');
+  const [targetWeightInput, setTargetWeightInput] = useState<string>(
+    defaultUnit === 'lb' ? '45' : '20'
+  );
   const [addWeightUnit, setAddWeightUnit] = useState<'kg' | 'lb'>(defaultUnit);
   const [cardWeightUnits, setCardWeightUnits] = useState<Record<string, 'kg' | 'lb'>>({});
+  const [editingSetWeights, setEditingSetWeights] = useState<Record<string, string>>({});
   const [targetDurationSeconds, setTargetDurationSeconds] = useState<string>('45');
   const [restSeconds, setRestSeconds] = useState<string>('60');
 
   const getCardUnit = (id: string): 'kg' | 'lb' => cardWeightUnits[id] || defaultUnit;
   const toggleCardUnit = (id: string) => {
+    const currentUnit = cardWeightUnits[id] || defaultUnit;
+    const nextUnit: 'kg' | 'lb' = currentUnit === 'lb' ? 'kg' : 'lb';
     setCardWeightUnits((prev) => ({
       ...prev,
-      [id]: (prev[id] || defaultUnit) === 'lb' ? 'kg' : 'lb',
+      [id]: nextUnit,
     }));
+    // Cleanly convert currently stored edit weights when switching unit
+    setEditingSetWeights((prev) => {
+      const next = { ...prev };
+      Object.keys(next).forEach((k) => {
+        if (k.startsWith(`${id}-`)) {
+          const num = parseFloat(next[k]);
+          if (!isNaN(num)) {
+            const converted =
+              nextUnit === 'lb'
+                ? Number((num * 2.20462262).toFixed(1))
+                : Number((num / 2.20462262).toFixed(1));
+            next[k] = converted.toString();
+          } else {
+            delete next[k];
+          }
+        }
+      });
+      return next;
+    });
   };
 
   const ensureSetsConfig = (item: RoutineExerciseConfig): RoutineSetTarget[] => {
@@ -170,9 +195,9 @@ export const RoutineFormModal: React.FC<RoutineFormModalProps> = ({
         return {
           ...ex,
           targetSets: currentSets.length,
-          targetWeightKg: firstSet?.targetWeightKg ?? ex.targetWeightKg,
-          targetReps: firstSet?.targetReps ?? ex.targetReps,
-          targetDurationSeconds: firstSet?.targetDurationSeconds ?? ex.targetDurationSeconds,
+          targetWeightKg: firstSet ? firstSet.targetWeightKg : ex.targetWeightKg,
+          targetReps: firstSet ? firstSet.targetReps : ex.targetReps,
+          targetDurationSeconds: firstSet ? firstSet.targetDurationSeconds : ex.targetDurationSeconds,
           setsConfig: currentSets,
         };
       })
@@ -224,6 +249,13 @@ export const RoutineFormModal: React.FC<RoutineFormModalProps> = ({
     const ex = routineExercises.find((e) => e.id === exerciseId);
     if (!ex) return;
     const setIdx = setNumber - 1;
+    setEditingSetWeights((prev) => {
+      const next = { ...prev };
+      Object.keys(next).forEach((k) => {
+        if (k.startsWith(`${exerciseId}-`)) delete next[k];
+      });
+      return next;
+    });
     handleUpdateSetInRoutineExercise(exerciseId, setIdx, { targetWeightKg: kg });
   };
 
@@ -243,6 +275,7 @@ export const RoutineFormModal: React.FC<RoutineFormModalProps> = ({
     setSelectedExerciseDef(null);
     setIsReordering(false);
     setExpandedIds({});
+    setEditingSetWeights({});
     setDraggedIdx(null);
     setDragOverIdx(null);
   }, [routineToEdit, isOpen]);
@@ -852,15 +885,17 @@ export const RoutineFormModal: React.FC<RoutineFormModalProps> = ({
                         {item.mode === 'weight_reps' && (
                           <>
                             <div style={{ padding: '0 4px' }}>
-                              <IonInput
-                                type="number"
-                                step={getCardUnit(item.id) === 'lb' ? '1' : '0.5'}
+                              <input
+                                type="text"
+                                inputMode="decimal"
                                 value={
-                                  s.targetWeightKg !== undefined
-                                    ? getCardUnit(item.id) === 'lb'
-                                      ? Number(((s.targetWeightKg || 0) * 2.20462262).toFixed(1))
-                                      : s.targetWeightKg
-                                    : ''
+                                  editingSetWeights[setKey] !== undefined
+                                    ? editingSetWeights[setKey]
+                                    : s.targetWeightKg !== undefined && s.targetWeightKg !== null
+                                      ? getCardUnit(item.id) === 'lb'
+                                        ? Number((s.targetWeightKg * 2.20462262).toFixed(1)).toString()
+                                        : Number(s.targetWeightKg.toFixed(1)).toString()
+                                      : ''
                                 }
                                 placeholder="0"
                                 onFocus={() => {
@@ -871,7 +906,12 @@ export const RoutineFormModal: React.FC<RoutineFormModalProps> = ({
                                     currentKg: s.targetWeightKg || 0,
                                   });
                                 }}
+                                onBlur={() => {
+                                  // We do not delete editingSetWeights[setKey] on blur to prevent rounding jumps (e.g. 63 -> 63.1)
+                                }}
                                 style={{
+                                  width: '100%',
+                                  boxSizing: 'border-box',
                                   textAlign: 'center',
                                   background: 'var(--ion-background-color, #10141c)',
                                   borderRadius: '8px',
@@ -880,26 +920,55 @@ export const RoutineFormModal: React.FC<RoutineFormModalProps> = ({
                                   fontSize: '0.95rem',
                                   color: '#ffffff',
                                   height: '36px',
+                                  outline: 'none',
                                 }}
-                                onIonInput={(e) => {
-                                  const val = parseFloat(e.detail.value || '0');
-                                  const kg =
-                                    getCardUnit(item.id) === 'lb'
-                                      ? Number((val * 0.45359237).toFixed(1))
-                                      : val;
-                                  handleUpdateSetInRoutineExercise(item.id, sIdx, {
-                                    targetWeightKg: isNaN(kg) ? 0 : kg,
+                                onChange={(e) => {
+                                  let raw = e.target.value.replace(/,/g, '.');
+                                  // Allow only digits and a single decimal point
+                                  if (!/^[0-9]*\.?[0-9]*$/.test(raw)) {
+                                    return;
+                                  }
+                                  setEditingSetWeights((prev) => {
+                                    const next: Record<string, string> = { ...prev, [setKey]: raw };
+                                    if (!isSingleEdit) {
+                                      Object.keys(next).forEach((k) => {
+                                        if (k.startsWith(`${item.id}-`) && k !== setKey) {
+                                          const otherIdx = parseInt(k.split('-').pop() || '0', 10);
+                                          if (otherIdx > sIdx) delete next[k];
+                                        }
+                                      });
+                                    }
+                                    return next;
                                   });
+                                  if (raw.trim() === '' || raw === '.') {
+                                    handleUpdateSetInRoutineExercise(item.id, sIdx, {
+                                      targetWeightKg: undefined,
+                                    });
+                                    return;
+                                  }
+                                  const val = parseFloat(raw);
+                                  if (!isNaN(val)) {
+                                    const kg =
+                                      getCardUnit(item.id) === 'lb'
+                                        ? Number((val / 2.20462262).toFixed(4))
+                                        : val;
+                                    handleUpdateSetInRoutineExercise(item.id, sIdx, {
+                                      targetWeightKg: kg,
+                                    });
+                                  }
                                 }}
                               />
                             </div>
 
                             <div style={{ padding: '0 4px' }}>
-                              <IonInput
-                                type="number"
-                                value={s.targetReps ?? ''}
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                value={s.targetReps !== undefined && s.targetReps !== null ? s.targetReps.toString() : ''}
                                 placeholder="10"
                                 style={{
+                                  width: '100%',
+                                  boxSizing: 'border-box',
                                   textAlign: 'center',
                                   background: 'var(--ion-background-color, #10141c)',
                                   borderRadius: '8px',
@@ -908,12 +977,14 @@ export const RoutineFormModal: React.FC<RoutineFormModalProps> = ({
                                   fontSize: '0.95rem',
                                   color: '#ffffff',
                                   height: '36px',
+                                  outline: 'none',
                                 }}
-                                onIonInput={(e) =>
+                                onChange={(e) => {
+                                  const raw = e.target.value.replace(/\D/g, '');
                                   handleUpdateSetInRoutineExercise(item.id, sIdx, {
-                                    targetReps: parseInt(e.detail.value || '0', 10),
-                                  })
-                                }
+                                    targetReps: raw.trim() === '' ? undefined : parseInt(raw, 10) || 0,
+                                  });
+                                }}
                               />
                             </div>
                           </>
@@ -921,11 +992,14 @@ export const RoutineFormModal: React.FC<RoutineFormModalProps> = ({
 
                         {item.mode === 'reps_only' && (
                           <div style={{ padding: '0 6px' }}>
-                            <IonInput
-                              type="number"
-                              value={s.targetReps ?? ''}
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              value={s.targetReps !== undefined && s.targetReps !== null ? s.targetReps.toString() : ''}
                               placeholder="10"
                               style={{
+                                width: '100%',
+                                boxSizing: 'border-box',
                                 textAlign: 'center',
                                 background: 'var(--ion-background-color, #10141c)',
                                 borderRadius: '8px',
@@ -934,23 +1008,28 @@ export const RoutineFormModal: React.FC<RoutineFormModalProps> = ({
                                 fontSize: '0.95rem',
                                 color: '#ffffff',
                                 height: '36px',
+                                outline: 'none',
                               }}
-                              onIonInput={(e) =>
+                              onChange={(e) => {
+                                const raw = e.target.value.replace(/\D/g, '');
                                 handleUpdateSetInRoutineExercise(item.id, sIdx, {
-                                  targetReps: parseInt(e.detail.value || '0', 10),
-                                })
-                              }
+                                  targetReps: raw.trim() === '' ? undefined : parseInt(raw, 10) || 0,
+                                });
+                              }}
                             />
                           </div>
                         )}
 
                         {item.mode === 'duration' && (
                           <div style={{ padding: '0 6px' }}>
-                            <IonInput
-                              type="number"
-                              value={s.targetDurationSeconds ?? ''}
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              value={s.targetDurationSeconds !== undefined && s.targetDurationSeconds !== null ? s.targetDurationSeconds.toString() : ''}
                               placeholder="30"
                               style={{
+                                width: '100%',
+                                boxSizing: 'border-box',
                                 textAlign: 'center',
                                 background: 'var(--ion-background-color, #10141c)',
                                 borderRadius: '8px',
@@ -959,12 +1038,15 @@ export const RoutineFormModal: React.FC<RoutineFormModalProps> = ({
                                 fontSize: '0.95rem',
                                 color: '#ffffff',
                                 height: '36px',
+                                outline: 'none',
                               }}
-                              onIonInput={(e) =>
+                              onChange={(e) => {
+                                const raw = e.target.value.replace(/\D/g, '');
                                 handleUpdateSetInRoutineExercise(item.id, sIdx, {
-                                  targetDurationSeconds: parseInt(e.detail.value || '0', 10),
-                                })
-                              }
+                                  targetDurationSeconds:
+                                    raw.trim() === '' ? undefined : parseInt(raw, 10) || 0,
+                                });
+                              }}
                             />
                           </div>
                         )}
@@ -1332,7 +1414,18 @@ export const RoutineFormModal: React.FC<RoutineFormModalProps> = ({
                         </span>
                         <button
                           type="button"
-                          onClick={() => setAddWeightUnit(addWeightUnit === 'kg' ? 'lb' : 'kg')}
+                          onClick={() => {
+                            const nextUnit = addWeightUnit === 'kg' ? 'lb' : 'kg';
+                            setAddWeightUnit(nextUnit);
+                            const currentVal = parseFloat(targetWeightInput);
+                            if (!isNaN(currentVal)) {
+                              const converted =
+                                nextUnit === 'lb'
+                                  ? Number((currentVal * 2.20462262).toFixed(1))
+                                  : Number((currentVal / 2.20462262).toFixed(1));
+                              setTargetWeightInput(converted.toString());
+                            }
+                          }}
                           style={{
                             background: addWeightUnit === 'lb' ? 'var(--ion-color-primary)' : 'var(--ion-color-step-100, #27272a)',
                             color: addWeightUnit === 'lb' ? '#ffffff' : 'var(--ion-color-primary)',
@@ -1354,27 +1447,46 @@ export const RoutineFormModal: React.FC<RoutineFormModalProps> = ({
                       </div>
 
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <IonInput
-                          type="number"
-                          step={addWeightUnit === 'lb' ? '1' : '0.5'}
-                          value={
-                            addWeightUnit === 'lb'
-                              ? Number(((parseFloat(targetWeightKg) || 0) * 2.20462262).toFixed(1))
-                              : targetWeightKg
-                          }
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={targetWeightInput}
                           placeholder={addWeightUnit === 'lb' ? '45' : '20'}
-                          style={{ fontSize: '1.25rem', fontWeight: 800, padding: 0 }}
-                          onIonInput={(e) => {
-                            const val = parseFloat(e.detail.value || '0');
-                            const kg = addWeightUnit === 'lb' ? Number((val * 0.45359237).toFixed(1)) : val;
-                            setTargetWeightKg(isNaN(kg) ? '' : kg.toString());
+                          style={{
+                            fontSize: '1.25rem',
+                            fontWeight: 800,
+                            padding: 0,
+                            background: 'transparent',
+                            border: 'none',
+                            outline: 'none',
+                            color: 'var(--ion-text-color)',
+                            width: '100px',
+                          }}
+                          onChange={(e) => {
+                            let raw = e.target.value.replace(/,/g, '.');
+                            if (!/^[0-9]*\.?[0-9]*$/.test(raw)) {
+                              return;
+                            }
+                            setTargetWeightInput(raw);
+                            if (raw.trim() === '' || raw === '.') {
+                              setTargetWeightKg('');
+                              return;
+                            }
+                            const val = parseFloat(raw);
+                            if (!isNaN(val)) {
+                              const kg =
+                                addWeightUnit === 'lb'
+                                  ? Number((val / 2.20462262).toFixed(4))
+                                  : val;
+                              setTargetWeightKg(kg.toString());
+                            }
                           }}
                         />
                         <span style={{ fontSize: '0.85rem', color: 'var(--ion-color-medium)', fontWeight: 600 }}>{addWeightUnit}</span>
                       </div>
                       <div style={{ fontSize: '0.72rem', color: addWeightUnit === 'lb' ? 'var(--ion-color-primary)' : 'var(--ion-color-medium)', fontWeight: 600, marginTop: '2px' }}>
                         {addWeightUnit === 'lb'
-                          ? `≈ ${targetWeightKg || 0} kg`
+                          ? `≈ ${Number((parseFloat(targetWeightKg) || 0).toFixed(1))} kg`
                           : `≈ ${((parseFloat(targetWeightKg) || 0) * 2.20462).toFixed(1)} lb`}
                       </div>
                     </div>

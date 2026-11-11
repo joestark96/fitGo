@@ -69,8 +69,8 @@ export const WeightFormModal: React.FC<WeightFormModalProps> = ({
     if (recordToEdit) {
       setDate(recordToEdit.date);
       setWeightKg(recordToEdit.weightKg.toString());
-      setWeightLbs((recordToEdit.weightKg * 2.20462).toFixed(1));
-      setWeightUnit('kg');
+      setWeightLbs(Number((recordToEdit.weightKg * 2.20462262).toFixed(1)).toString());
+      setWeightUnit(profile?.preferredWeightUnit || 'kg');
       setHeightCm(recordToEdit.heightCm.toString());
       setWaistCm(recordToEdit.waistCm ? recordToEdit.waistCm.toString() : '');
       setHipsCm(recordToEdit.hipsCm ? recordToEdit.hipsCm.toString() : '');
@@ -299,25 +299,32 @@ export const WeightFormModal: React.FC<WeightFormModalProps> = ({
 
               {weightUnit === 'kg' ? (
                 <>
-                  <IonInput
-                    type="number"
-                    step="0.1"
+                  <input
+                    type="text"
+                    inputMode="decimal"
                     placeholder="Ej. 74.5"
                     value={weightKg}
                     style={{
+                      width: '100%',
+                      boxSizing: 'border-box',
                       background: 'var(--ion-background-color, #121215)',
                       borderRadius: '10px',
                       border: '1px solid var(--ion-color-step-150, #27272a)',
                       fontSize: '1.25rem',
                       fontWeight: 800,
-                      padding: '4px 10px',
+                      padding: '8px 12px',
+                      color: 'var(--ion-text-color, #ffffff)',
+                      outline: 'none',
                     }}
-                    onIonInput={(e) => {
-                      const val = e.detail.value || '';
+                    onChange={(e) => {
+                      let val = e.target.value.replace(/,/g, '.');
+                      if (!/^[0-9]*\.?[0-9]*$/.test(val)) return;
                       setWeightKg(val);
                       const num = parseFloat(val);
                       if (!isNaN(num) && num > 0) {
                         setWeightLbs((num * 2.20462).toFixed(1));
+                      } else {
+                        setWeightLbs('');
                       }
                     }}
                   />
@@ -329,25 +336,30 @@ export const WeightFormModal: React.FC<WeightFormModalProps> = ({
                 </>
               ) : (
                 <>
-                  <IonInput
-                    type="number"
-                    step="0.5"
+                  <input
+                    type="text"
+                    inputMode="decimal"
                     placeholder="Ej. 165"
                     value={weightLbs}
                     style={{
+                      width: '100%',
+                      boxSizing: 'border-box',
                       background: 'var(--ion-background-color, #121215)',
                       borderRadius: '10px',
                       border: '1px solid var(--ion-color-step-150, #27272a)',
                       fontSize: '1.25rem',
                       fontWeight: 800,
-                      padding: '4px 10px',
+                      padding: '8px 12px',
+                      color: 'var(--ion-text-color, #ffffff)',
+                      outline: 'none',
                     }}
-                    onIonInput={(e) => {
-                      const val = e.detail.value || '';
+                    onChange={(e) => {
+                      let val = e.target.value.replace(/,/g, '.');
+                      if (!/^[0-9]*\.?[0-9]*$/.test(val)) return;
                       setWeightLbs(val);
                       const num = parseFloat(val);
                       if (!isNaN(num) && num > 0) {
-                        setWeightKg((num * 0.45359237).toFixed(1));
+                        setWeightKg(Number((num / 2.20462262).toFixed(2)).toString());
                       } else {
                         setWeightKg('');
                       }
