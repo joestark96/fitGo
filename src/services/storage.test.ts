@@ -436,7 +436,7 @@ describe('Storage and Fitness Calculations', () => {
       });
 
       const backup = StorageService.exportBackupData();
-      expect(backup.appName).toBe('fitGo');
+      expect(backup.appName).toBe('fitGo!');
       expect(backup.profile?.name).toBe('Alfonso Backup');
       expect(StorageService.getLastBackupDate()).toBeTruthy();
 

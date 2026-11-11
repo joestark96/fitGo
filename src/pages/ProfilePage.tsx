@@ -188,8 +188,8 @@ export const ProfilePage: React.FC = () => {
       const file = new File([jsonString], fileName, { type: 'application/json' });
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
-          title: `Respaldo fitGo (${datePart})`,
-          text: 'Guarda este archivo en tu Google Drive para respaldar tu progreso de fitGo.',
+          title: `Respaldo fitGo! (${datePart})`,
+          text: 'Guarda este archivo en tu Google Drive para respaldar tu progreso de fitGo!.',
           files: [file],
         });
       } else {
@@ -231,7 +231,7 @@ export const ProfilePage: React.FC = () => {
           encoding: Encoding.UTF8,
         });
 
-        let savedPath = 'Almacenamiento interno de fitGo';
+        let savedPath = 'Almacenamiento interno de fitGo!';
         try {
           await Filesystem.writeFile({
             path: fileName,
@@ -331,18 +331,19 @@ export const ProfilePage: React.FC = () => {
       if (
         !parsed ||
         typeof parsed !== 'object' ||
-        (parsed.appName !== 'fitGo' &&
+        (parsed.appName !== 'fitGo!' &&
+          parsed.appName !== 'fitGo' &&
           parsed.appName !== 'FitTrack' &&
           !Array.isArray(parsed.workoutSessions) &&
           !Array.isArray(parsed.routines))
       ) {
-        setErrorMessage('El archivo seleccionado no es un respaldo válido de fitGo.');
+        setErrorMessage('El archivo seleccionado no es un respaldo válido de fitGo!.');
         return;
       }
       setErrorMessage('');
       setPendingRestorePayload(parsed);
     } catch {
-      setErrorMessage('No se pudo leer el archivo JSON. Asegúrate de elegir un respaldo de fitGo.');
+      setErrorMessage('No se pudo leer el archivo JSON. Asegúrate de elegir un respaldo de fitGo!.');
     } finally {
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
@@ -497,11 +498,11 @@ export const ProfilePage: React.FC = () => {
               transition: 'transform 0.12s ease',
               boxShadow: '0 4px 16px rgba(0, 0, 0, 0.25)',
             }}
-            title="fitGo Logo"
+            title="fitGo! Logo"
           >
             <img
               src="/icon-192.png"
-              alt="fitGo Logo"
+              alt="fitGo! Logo"
               style={{ width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none' }}
             />
           </div>

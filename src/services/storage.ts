@@ -19,7 +19,7 @@ import {
 import { sqliteService } from './sqliteService';
 
 export interface FitTrackBackupPayload {
-  appName: 'fitGo' | 'FitTrack';
+  appName: 'fitGo!' | 'fitGo' | 'FitTrack';
   version: string;
   exportedAt: string;
   profile: UserProfile | null;
@@ -954,7 +954,7 @@ export const StorageService = {
     const customExercises = allExercises.filter((ex) => !defaultIds.has(ex.id));
 
     return {
-      appName: 'fitGo',
+      appName: 'fitGo!',
       version: APP_VERSION,
       exportedAt: nowIso,
       profile: this.getUserProfile(),
@@ -973,6 +973,7 @@ export const StorageService = {
       throw new Error('El archivo de respaldo no es válido.');
     }
     const hasValidKeys =
+      payload.appName === 'fitGo!' ||
       payload.appName === 'fitGo' ||
       payload.appName === 'FitTrack' ||
       payload.profile !== undefined ||
@@ -981,7 +982,7 @@ export const StorageService = {
       Array.isArray(payload.weightRecords);
 
     if (!hasValidKeys) {
-      throw new Error('El archivo seleccionado no pertenece a un respaldo de fitGo.');
+      throw new Error('El archivo seleccionado no pertenece a un respaldo de fitGo!.');
     }
 
     // Clear existing SQLite tables before re-hydrating
@@ -1056,7 +1057,7 @@ export const StorageService = {
       exportedAt: new Date().toISOString(),
       _guia_de_formato: {
         instrucciones:
-          'Llena la lista de "exercises" (si deseas agregar ejercicios nuevos al catálogo) y la lista de "routines" con tus rutinas. Si un ejercicio dentro de una rutina aún no existe en el catálogo, fitGo lo creará automáticamente por su nombre ("exerciseName").',
+          'Llena la lista de "exercises" (si deseas agregar ejercicios nuevos al catálogo) y la lista de "routines" con tus rutinas. Si un ejercicio dentro de una rutina aún no existe en el catálogo, fitGo! lo creará automáticamente por su nombre ("exerciseName").',
         grupos_musculares_validos: [
           'pecho',
           'espalda',
