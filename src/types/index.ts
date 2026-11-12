@@ -1,4 +1,4 @@
-export const APP_VERSION = '1.0.5';
+export const APP_VERSION = '1.0.6';
 
 export type Gender = 'male' | 'female' | 'other' | 'prefer_not_to_say';
 

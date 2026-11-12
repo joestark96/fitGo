@@ -32,6 +32,7 @@ import { useApp } from '../context/AppContext';
 import { ExerciseDefinition, MuscleGroup, EquipmentType } from '../types';
 import { ExerciseGif } from './ExerciseGif';
 import { ExerciseFormModal } from './ExerciseFormModal';
+import { ExerciseFocusFilter, matchesExerciseFocus } from '../services/exerciseClassification';
 
 interface ExerciseCatalogModalProps {
   isOpen: boolean;
@@ -40,15 +41,20 @@ interface ExerciseCatalogModalProps {
   onSelectCustom?: () => void;
 }
 
-const MUSCLE_FILTERS: { key: MuscleGroup | 'todos'; label: string; color: string }[] = [
+const MUSCLE_FILTERS: { key: ExerciseFocusFilter | 'todos'; label: string; color: string }[] = [
   { key: 'todos', label: 'Todos los músculos', color: 'primary' },
   { key: 'pecho', label: 'Pecho', color: 'primary' },
   { key: 'espalda', label: 'Espalda', color: 'success' },
   { key: 'piernas', label: 'Piernas', color: 'tertiary' },
+  { key: 'gluteos', label: 'Glúteos', color: 'tertiary' },
   { key: 'hombros', label: 'Hombros', color: 'warning' },
   { key: 'brazos', label: 'Brazos', color: 'danger' },
   { key: 'core', label: 'Core / Abdomen', color: 'secondary' },
   { key: 'cardio', label: 'Cardio', color: 'warning' },
+  { key: 'push', label: 'Push (Empuje)', color: 'primary' },
+  { key: 'pull', label: 'Pull (Tirón)', color: 'success' },
+  { key: 'tren_superior', label: 'Tren Superior', color: 'secondary' },
+  { key: 'tren_inferior', label: 'Tren Inferior', color: 'tertiary' },
 ];
 
 export type EquipmentFilterKey = 'todos' | 'casa' | 'mancuernas' | 'maquina' | 'polea' | 'barra' | 'bandas';
@@ -92,7 +98,7 @@ export const ExerciseCatalogModal: React.FC<ExerciseCatalogModalProps> = ({
 }) => {
   const { exercises } = useApp();
   const [searchText, setSearchText] = useState('');
-  const [selectedMuscle, setSelectedMuscle] = useState<MuscleGroup | 'todos'>('todos');
+  const [selectedMuscle, setSelectedMuscle] = useState<ExerciseFocusFilter | 'todos'>('todos');
   const [selectedEquipment, setSelectedEquipment] = useState<EquipmentFilterKey>('todos');
   const [previewExercise, setPreviewExercise] = useState<ExerciseDefinition | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -126,19 +132,8 @@ export const ExerciseCatalogModal: React.FC<ExerciseCatalogModalProps> = ({
       const normEq = normalize(ex.equipment || '');
       const combined = `${normName} ${normDesc} ${normMuscle} ${normEq}`;
 
-      // Check if this exercise covers rear delts / upper back (trained in both shoulders and back)
-      const isRearDelt =
-        normName.includes('deltoide') ||
-        normDesc.includes('deltoide') ||
-        normName.includes('pajaro') ||
-        normDesc.includes('pajaro') ||
-        ex.id.includes('pajaro') ||
-        ex.id.includes('reverse-fly');
-
       const matchesMuscle =
-        selectedMuscle === 'todos' ||
-        ex.muscleGroup.toLowerCase() === selectedMuscle.toLowerCase() ||
-        (isRearDelt && ex.muscleGroup === 'hombros' && selectedMuscle === 'espalda');
+        selectedMuscle === 'todos' || matchesExerciseFocus(ex, selectedMuscle);
 
       if (!matchesMuscle) return false;
 

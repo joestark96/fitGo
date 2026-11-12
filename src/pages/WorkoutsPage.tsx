@@ -36,6 +36,7 @@ import {
   flameOutline,
   shieldCheckmarkOutline,
   checkmarkCircleOutline,
+  sparklesOutline,
 } from 'ionicons/icons';
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
@@ -63,6 +64,7 @@ export const WorkoutsPage: React.FC = () => {
   } = useApp();
 
   const [isRoutineModalOpen, setIsRoutineModalOpen] = useState(false);
+  const [openRecommenderOnModal, setOpenRecommenderOnModal] = useState(false);
   const [routineToEdit, setRoutineToEdit] = useState<Routine | null>(null);
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
   const [routineToDelete, setRoutineToDelete] = useState<string | null>(null);
@@ -143,11 +145,19 @@ export const WorkoutsPage: React.FC = () => {
 
   const handleCreateNew = () => {
     setRoutineToEdit(null);
+    setOpenRecommenderOnModal(false);
+    setIsRoutineModalOpen(true);
+  };
+
+  const handleCreateRecommended = () => {
+    setRoutineToEdit(null);
+    setOpenRecommenderOnModal(true);
     setIsRoutineModalOpen(true);
   };
 
   const handleEditRoutine = (routine: Routine) => {
     setRoutineToEdit(routine);
+    setOpenRecommenderOnModal(false);
     setIsRoutineModalOpen(true);
   };
 
@@ -327,14 +337,14 @@ export const WorkoutsPage: React.FC = () => {
         </IonCard>
 
         {/* Section: Mis Rutinas */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
           <h2 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700 }}>
             Mis Rutinas <span style={{ color: 'var(--ion-color-medium)', fontWeight: 500 }}>({routines.length})</span>
           </h2>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <IonButton size="small" fill="outline" color="medium" onClick={() => setIsCatalogOpen(true)}>
-              <IonIcon slot="start" icon={searchOutline} />
-              Catálogo
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+            <IonButton size="small" fill="outline" color="secondary" onClick={handleCreateRecommended}>
+              <IonIcon slot="start" icon={sparklesOutline} />
+              Recomendada
             </IonButton>
             <IonButton size="small" fill="solid" color="primary" onClick={handleCreateNew}>
               <IonIcon slot="start" icon={addOutline} />
@@ -606,12 +616,15 @@ export const WorkoutsPage: React.FC = () => {
         <RoutineFormModal
           isOpen={isRoutineModalOpen}
           routineToEdit={routineToEdit}
+          initialOpenRecommender={openRecommenderOnModal}
           onClose={() => {
             setIsRoutineModalOpen(false);
+            setOpenRecommenderOnModal(false);
             setRoutineToEdit(null);
           }}
           onSaved={() => {
             setIsRoutineModalOpen(false);
+            setOpenRecommenderOnModal(false);
             setRoutineToEdit(null);
           }}
         />

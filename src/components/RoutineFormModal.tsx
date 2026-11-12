@@ -54,10 +54,12 @@ import {
 import { ExerciseCatalogModal } from './ExerciseCatalogModal';
 import { ExerciseGif } from './ExerciseGif';
 import { WeightConverterModal } from './WeightConverterModal';
+import { RecommendedWorkoutModal } from './RecommendedWorkoutModal';
 
 interface RoutineFormModalProps {
   isOpen: boolean;
   routineToEdit?: Routine | null;
+  initialOpenRecommender?: boolean;
   onClose: () => void;
   onSaved: (routine: Routine) => void;
 }
@@ -65,6 +67,7 @@ interface RoutineFormModalProps {
 export const RoutineFormModal: React.FC<RoutineFormModalProps> = ({
   isOpen,
   routineToEdit,
+  initialOpenRecommender = false,
   onClose,
   onSaved,
 }) => {
@@ -100,6 +103,7 @@ export const RoutineFormModal: React.FC<RoutineFormModalProps> = ({
   const [showAddExerciseForm, setShowAddExerciseForm] = useState(false);
   const [showCatalogModal, setShowCatalogModal] = useState(false);
   const [showConverterModal, setShowConverterModal] = useState(false);
+  const [showRecommendedModal, setShowRecommendedModal] = useState(false);
   const [selectedExerciseId, setSelectedExerciseId] = useState('');
   const [selectedExerciseDef, setSelectedExerciseDef] = useState<ExerciseDefinition | null>(null);
   const [customExerciseName, setCustomExerciseName] = useState('');
@@ -272,6 +276,7 @@ export const RoutineFormModal: React.FC<RoutineFormModalProps> = ({
     setErrorMessage('');
     setShowAddExerciseForm(false);
     setShowCatalogModal(false);
+    setShowRecommendedModal(isOpen && initialOpenRecommender && !routineToEdit);
     setSelectedExerciseDef(null);
     setIsReordering(false);
     setExpandedIds({});
@@ -574,7 +579,19 @@ export const RoutineFormModal: React.FC<RoutineFormModalProps> = ({
             )}
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+            <IonButton
+              size="small"
+              fill="solid"
+              color="secondary"
+              onClick={() => setShowRecommendedModal(true)}
+              style={{ margin: 0, fontWeight: 700 }}
+              title="Generar entrenamiento recomendado según tus últimos entrenamientos"
+            >
+              <IonIcon slot="start" icon={sparklesOutline} />
+              Recomendada
+            </IonButton>
+
             <IonButton
               size="small"
               fill="outline"
@@ -607,7 +624,15 @@ export const RoutineFormModal: React.FC<RoutineFormModalProps> = ({
             <p style={{ margin: '8px 0 14px', color: 'var(--ion-color-medium)' }}>
               Aún no has agregado ejercicios a esta rutina.
             </p>
-            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
+              <IonButton
+                fill="solid"
+                color="secondary"
+                onClick={() => setShowRecommendedModal(true)}
+              >
+                <IonIcon slot="start" icon={sparklesOutline} />
+                Crear Recomendada
+              </IonButton>
               <IonButton
                 fill="solid"
                 onClick={() => setShowCatalogModal(true)}
@@ -1654,6 +1679,32 @@ export const RoutineFormModal: React.FC<RoutineFormModalProps> = ({
                 }
               : undefined
           }
+        />
+
+        {/* Recommended Workout Generator Modal */}
+        <RecommendedWorkoutModal
+          isOpen={showRecommendedModal}
+          onClose={() => setShowRecommendedModal(false)}
+          existingExerciseIds={routineExercises.map((e) => e.exerciseId)}
+          onApply={({ exercises: recommended, suggestedName, suggestedDescription, replaceExisting }) => {
+            setRoutineExercises((prev) =>
+              replaceExisting ? recommended : [...prev, ...recommended]
+            );
+            if (!routineName.trim()) {
+              setRoutineName(suggestedName);
+            }
+            if (!description.trim()) {
+              setDescription(suggestedDescription);
+            }
+            setEditingSetWeights({});
+            setErrorMessage('');
+            // Auto-expand the generated exercises so the user can review and tweak weights right away
+            const nextExpanded: Record<string, boolean> = {};
+            recommended.forEach((ex) => {
+              nextExpanded[ex.id] = true;
+            });
+            setExpandedIds((prev) => (replaceExisting ? nextExpanded : { ...prev, ...nextExpanded }));
+          }}
         />
       </IonContent>
     </IonModal>
