@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import {
   IonModal,
   IonHeader,
@@ -19,6 +19,8 @@ import {
   checkmarkCircle,
   refreshOutline,
   checkmarkOutline,
+  lockClosedOutline,
+  lockOpenOutline,
 } from 'ionicons/icons';
 import { useApp } from '../context/AppContext';
 import { ExerciseGif } from './ExerciseGif';
@@ -26,7 +28,9 @@ import { EquipmentType, RoutineExerciseConfig } from '../types';
 import { ExerciseFocusFilter } from '../services/exerciseClassification';
 import {
   generateRecommendedWorkout,
+  LockedExerciseSlot,
   MUSCLE_GROUP_LABELS,
+  RecommendedExerciseMeta,
 } from '../services/recommendedWorkoutService';
 
 interface RecommendedWorkoutModalProps {
@@ -81,6 +85,75 @@ export const RecommendedWorkoutModal: React.FC<RecommendedWorkoutModalProps> = (
   const [selectedEquipments, setSelectedEquipments] = useState<EquipmentType[]>([]);
   const [replaceExisting, setReplaceExisting] = useState<boolean>(true);
   const [seedBump, setSeedBump] = useState<number>(0);
+  const [lockedMap, setLockedMap] = useState<Record<string, RecommendedExerciseMeta>>({});
+  const lockedSlotsRef = useRef<LockedExerciseSlot[]>([]);
+  const [swipeState, setSwipeState] = useState<{
+    id: string;
+    startX: number;
+    startY: number;
+    offsetX: number;
+    isHorizontal: boolean;
+  } | null>(null);
+
+  const setExerciseLocked = (item: RecommendedExerciseMeta, index: number, locked: boolean) => {
+    const id = item.config.exerciseId;
+    if (locked) {
+      if (!lockedSlotsRef.current.some((s) => s.item.config.exerciseId === id)) {
+        lockedSlotsRef.current = [...lockedSlotsRef.current, { index, item }];
+      }
+    } else {
+      lockedSlotsRef.current = lockedSlotsRef.current.filter(
+        (s) => s.item.config.exerciseId !== id
+      );
+    }
+
+    setLockedMap((prev) => {
+      if (locked) {
+        if (prev[id]) return prev;
+        return { ...prev, [id]: item };
+      } else {
+        if (!prev[id]) return prev;
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      }
+    });
+  };
+
+  const handleSwipeStart = (id: string, clientX: number, clientY: number) => {
+    setSwipeState({ id, startX: clientX, startY: clientY, offsetX: 0, isHorizontal: false });
+  };
+
+  const handleSwipeMove = (id: string, clientX: number, clientY: number, isLocked: boolean) => {
+    setSwipeState((prev) => {
+      if (!prev || prev.id !== id) return prev;
+      const dx = clientX - prev.startX;
+      const dy = clientY - prev.startY;
+      const isHorizontal = prev.isHorizontal || (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy));
+      if (!isHorizontal) return prev;
+
+      // Only swipe left to lock when unlocked; only swipe right to unlock when locked
+      let clamped = 0;
+      if (!isLocked && dx < 0) {
+        clamped = Math.max(-96, dx);
+      } else if (isLocked && dx > 0) {
+        clamped = Math.min(96, dx);
+      }
+      return { ...prev, isHorizontal, offsetX: clamped };
+    });
+  };
+
+  const handleSwipeEnd = (item: RecommendedExerciseMeta, index: number, isLocked: boolean) => {
+    setSwipeState((prev) => {
+      if (!prev || prev.id !== item.config.exerciseId) return null;
+      if (!isLocked && prev.offsetX <= -48) {
+        setExerciseLocked(item, index, true);
+      } else if (isLocked && prev.offsetX >= 48) {
+        setExerciseLocked(item, index, false);
+      }
+      return null;
+    });
+  };
 
   const toggleMuscle = (muscle: ExerciseFocusFilter) => {
     setSelectedMuscles((prev) => {
@@ -115,6 +188,7 @@ export const RecommendedWorkoutModal: React.FC<RecommendedWorkoutModalProps> = (
       totalExercises,
       equipmentFilter: selectedEquipments.length > 0 ? selectedEquipments : 'todos',
       excludeExerciseIds: replaceExisting ? [] : existingExerciseIds,
+      lockedSlots: lockedSlotsRef.current,
       variationSeed: seedBump,
     });
   }, [
@@ -145,6 +219,8 @@ export const RecommendedWorkoutModal: React.FC<RecommendedWorkoutModalProps> = (
       suggestedDescription: generated.suggestedDescription,
       replaceExisting,
     });
+    lockedSlotsRef.current = [];
+    setLockedMap({});
     onClose();
   };
 
@@ -379,7 +455,7 @@ export const RecommendedWorkoutModal: React.FC<RecommendedWorkoutModalProps> = (
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            marginBottom: '10px',
+            marginBottom: '4px',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -400,6 +476,9 @@ export const RecommendedWorkoutModal: React.FC<RecommendedWorkoutModalProps> = (
             Variar
           </IonButton>
         </div>
+        <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginBottom: '10px', fontWeight: 600 }}>
+          Desliza a la izquierda para bloquear • a la derecha para desbloquear
+        </div>
 
         {/* Preview List */}
         {generated.items.length === 0 ? (
@@ -413,6 +492,9 @@ export const RecommendedWorkoutModal: React.FC<RecommendedWorkoutModalProps> = (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' }}>
             {generated.items.map((item, idx) => {
               const { config, source, muscleGroup } = item;
+              const isLocked = Boolean(lockedMap[config.exerciseId]);
+              const activeOffset =
+                swipeState?.id === config.exerciseId ? swipeState.offsetX : 0;
               const setsCount = config.targetSets;
               const repsText =
                 config.mode === 'duration'
@@ -424,62 +506,151 @@ export const RecommendedWorkoutModal: React.FC<RecommendedWorkoutModalProps> = (
                   : '';
 
               return (
-                <IonCard
+                <div
                   key={`${config.exerciseId}-${idx}`}
                   style={{
-                    margin: 0,
+                    position: 'relative',
                     borderRadius: '12px',
-                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    overflow: 'hidden',
                   }}
                 >
-                  <IonCardContent style={{ padding: '10px 14px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
-                        <ExerciseGif
-                          gifUrl={config.gifUrl}
-                          exerciseName={config.exerciseName}
-                          muscleGroup={MUSCLE_GROUP_LABELS[muscleGroup]}
-                          size="small"
-                          allowZoom={true}
-                        />
+                  {/* Swipe action background */}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: activeOffset < 0 ? 'flex-end' : 'flex-start',
+                      padding: '0 16px',
+                      background:
+                        activeOffset < 0
+                          ? 'rgba(245, 158, 11, 0.25)'
+                          : activeOffset > 0
+                            ? 'rgba(59, 130, 246, 0.25)'
+                            : 'transparent',
+                      color: activeOffset < 0 ? '#fbbf24' : '#60a5fa',
+                      fontWeight: 800,
+                      fontSize: '0.8rem',
+                      gap: '6px',
+                      pointerEvents: 'none',
+                    }}
+                  >
+                    {activeOffset < 0 && (
+                      <>
+                        <IonIcon icon={lockClosedOutline} style={{ fontSize: '1.1rem' }} />
+                        <span>Bloquear</span>
+                      </>
+                    )}
+                    {activeOffset > 0 && (
+                      <>
+                        <IonIcon icon={lockOpenOutline} style={{ fontSize: '1.1rem' }} />
+                        <span>Desbloquear</span>
+                      </>
+                    )}
+                  </div>
 
-                        <div style={{ minWidth: 0 }}>
-                          <div style={{ fontWeight: 800, fontSize: '0.94rem', color: '#ffffff', marginBottom: '4px' }}>
-                            {idx + 1}. {config.exerciseName}
-                          </div>
-                          <div style={{ fontSize: '0.8rem', color: '#94a3b8', fontWeight: 600 }}>
-                            {setsCount} series × {repsText}
-                            <strong style={{ color: '#60a5fa' }}>{weightText}</strong>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px', flexShrink: 0 }}>
-                        <IonBadge color="primary" style={{ textTransform: 'capitalize', fontSize: '0.68rem' }}>
-                          {MUSCLE_GROUP_LABELS[muscleGroup]}
-                        </IonBadge>
-                        <span
+                  <div
+                    onTouchStart={(e) => {
+                      const t = e.touches[0];
+                      if (t) handleSwipeStart(config.exerciseId, t.clientX, t.clientY);
+                    }}
+                    onTouchMove={(e) => {
+                      const t = e.touches[0];
+                      if (t) handleSwipeMove(config.exerciseId, t.clientX, t.clientY, isLocked);
+                    }}
+                    onTouchEnd={() => handleSwipeEnd(item, idx, isLocked)}
+                    onTouchCancel={() => setSwipeState(null)}
+                    style={{
+                      transform: `translateX(${activeOffset}px)`,
+                      transition: activeOffset === 0 ? 'transform 0.18s ease-out' : 'none',
+                      touchAction: 'pan-y',
+                    }}
+                  >
+                    <IonCard
+                      style={{
+                        position: 'relative',
+                        margin: 0,
+                        borderRadius: '12px',
+                        border: isLocked
+                          ? '1.5px solid #f59e0b'
+                          : '1px solid rgba(255, 255, 255, 0.08)',
+                        background: isLocked
+                          ? 'linear-gradient(135deg, rgba(245, 158, 11, 0.16), rgba(245, 158, 11, 0.06))'
+                          : undefined,
+                        boxShadow: isLocked ? '0 0 0 1px rgba(245, 158, 11, 0.2)' : undefined,
+                      }}
+                    >
+                      {isLocked && (
+                        <div
                           style={{
-                            fontSize: '0.68rem',
-                            fontWeight: 700,
-                            color:
-                              source === 'history'
-                                ? '#34d399'
-                                : source === 'routine'
-                                  ? '#fbbf24'
-                                  : '#94a3b8',
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            background: '#f59e0b',
+                            color: '#0f172a',
+                            padding: '3px 6px',
+                            borderBottomRightRadius: '10px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            zIndex: 2,
+                            pointerEvents: 'none',
                           }}
                         >
-                          {source === 'history'
-                            ? 'Según tu último entreno'
-                            : source === 'routine'
-                              ? 'Según tus rutinas'
-                              : 'Peso inicial sugerido'}
-                        </span>
-                      </div>
-                    </div>
-                  </IonCardContent>
-                </IonCard>
+                          <IonIcon icon={lockClosedOutline} style={{ fontSize: '0.78rem' }} />
+                        </div>
+                      )}
+                      <IonCardContent style={{ padding: '10px 14px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
+                            <ExerciseGif
+                              gifUrl={config.gifUrl}
+                              exerciseName={config.exerciseName}
+                              muscleGroup={MUSCLE_GROUP_LABELS[muscleGroup]}
+                              size="small"
+                              allowZoom={true}
+                            />
+
+                            <div style={{ minWidth: 0 }}>
+                              <div style={{ fontWeight: 800, fontSize: '0.94rem', color: '#ffffff', marginBottom: '4px' }}>
+                                {idx + 1}. {config.exerciseName}
+                              </div>
+                              <div style={{ fontSize: '0.8rem', color: '#94a3b8', fontWeight: 600 }}>
+                                {setsCount} series × {repsText}
+                                <strong style={{ color: '#60a5fa' }}>{weightText}</strong>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px', flexShrink: 0 }}>
+                            <IonBadge color="primary" style={{ textTransform: 'capitalize', fontSize: '0.68rem' }}>
+                              {MUSCLE_GROUP_LABELS[muscleGroup]}
+                            </IonBadge>
+                            <span
+                              style={{
+                                fontSize: '0.68rem',
+                                fontWeight: 700,
+                                color:
+                                  source === 'history'
+                                    ? '#34d399'
+                                    : source === 'routine'
+                                      ? '#fbbf24'
+                                      : '#94a3b8',
+                              }}
+                            >
+                              {source === 'history'
+                                ? 'Según tu último entreno'
+                                : source === 'routine'
+                                  ? 'Según tus rutinas'
+                                  : 'Peso inicial sugerido'}
+                            </span>
+                          </div>
+                        </div>
+                      </IonCardContent>
+                    </IonCard>
+                  </div>
+                </div>
               );
             })}
           </div>

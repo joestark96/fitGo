@@ -20,6 +20,11 @@ export interface RecommendedExerciseMeta {
   lastSessionDate?: string;
 }
 
+export interface LockedExerciseSlot {
+  index: number;
+  item: RecommendedExerciseMeta;
+}
+
 export interface GenerateRecommendedWorkoutOptions {
   selectedMuscles: ExerciseFocusFilter[];
   exercises: ExerciseDefinition[];
@@ -28,6 +33,8 @@ export interface GenerateRecommendedWorkoutOptions {
   totalExercises?: number;
   equipmentFilter?: EquipmentType | 'todos' | EquipmentType[];
   excludeExerciseIds?: string[];
+  lockedItems?: RecommendedExerciseMeta[];
+  lockedSlots?: LockedExerciseSlot[];
   variationSeed?: number;
 }
 
@@ -201,6 +208,8 @@ export function generateRecommendedWorkout(
     totalExercises,
     equipmentFilter = 'todos',
     excludeExerciseIds = [],
+    lockedItems = [],
+    lockedSlots = [],
     variationSeed = 0,
   } = options;
 
@@ -223,6 +232,22 @@ export function generateRecommendedWorkout(
       ? totalExercises
       : Math.min(8, Math.max(4, targetGroups.length * 2));
 
+  const normalizedSlots: LockedExerciseSlot[] =
+    lockedSlots.length > 0
+      ? lockedSlots.filter((s) => s.index >= 0 && s.index < desiredCount)
+      : lockedItems.slice(0, desiredCount).map((item, idx) => ({ index: idx, item }));
+
+  const lockedByIndex = new Map<number, RecommendedExerciseMeta>();
+  const lockedIds = new Set<string>();
+  for (const slot of normalizedSlots) {
+    const id = slot.item.config.exerciseId;
+    if (!lockedByIndex.has(slot.index) && !lockedIds.has(id)) {
+      lockedByIndex.set(slot.index, slot.item);
+      lockedIds.add(id);
+    }
+  }
+  const remainingCount = Math.max(0, desiredCount - lockedByIndex.size);
+
   const sortedCompletedSessions = [...(workoutSessions || [])]
     .filter((s) => s.isCompleted)
     .sort(
@@ -243,7 +268,10 @@ export function generateRecommendedWorkout(
     });
   });
 
-  const excludedSet = new Set(excludeExerciseIds);
+  const excludedSet = new Set([
+    ...excludeExerciseIds,
+    ...Array.from(lockedIds),
+  ]);
 
   // Bucket exercises by target focus/muscle group
   const buckets = new Map<ExerciseFocusFilter, ExerciseDefinition[]>();
@@ -287,10 +315,10 @@ export function generateRecommendedWorkout(
   const groupIndices = new Map<ExerciseFocusFilter, number>();
   let progress = true;
 
-  while (picked.length < desiredCount && progress) {
+  while (picked.length < remainingCount && progress) {
     progress = false;
     for (const group of targetGroups) {
-      if (picked.length >= desiredCount) break;
+      if (picked.length >= remainingCount) break;
       const list = buckets.get(group) || [];
       let idx = groupIndices.get(group) || 0;
       while (idx < list.length && pickedIds.has(list[idx].id)) {
@@ -309,7 +337,7 @@ export function generateRecommendedWorkout(
   }
 
   const nowTs = Date.now();
-  const items: RecommendedExerciseMeta[] = picked.map((ex, idx) => {
+  const generatedItems: RecommendedExerciseMeta[] = picked.map((ex, idx) => {
     const perf = findLastPerformanceForExercise(ex, sortedCompletedSessions, routines);
     const setsConfig: RoutineSetTarget[] = [];
 
@@ -357,6 +385,20 @@ export function generateRecommendedWorkout(
       lastSessionDate: perf.lastSessionDate,
     };
   });
+
+  const items: RecommendedExerciseMeta[] = [];
+  let genIdx = 0;
+  for (let slotIdx = 0; slotIdx < desiredCount; slotIdx++) {
+    const locked = lockedByIndex.get(slotIdx);
+    if (locked) {
+      items.push(locked);
+    } else if (genIdx < generatedItems.length) {
+      items.push(generatedItems[genIdx++]);
+    }
+  }
+  while (genIdx < generatedItems.length) {
+    items.push(generatedItems[genIdx++]);
+  }
 
   const groupNames = selectedMuscles.map((m) => MUSCLE_GROUP_LABELS[m]);
   const suggestedName =

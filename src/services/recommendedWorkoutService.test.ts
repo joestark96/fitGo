@@ -308,4 +308,39 @@ describe('generateRecommendedWorkout', () => {
     });
     expect(lower.items.every((i) => i.muscleGroup === 'piernas')).toBe(true);
   });
+
+  it('preserves lockedItems without duplicating them when varying or changing filters', () => {
+    const initial = generateRecommendedWorkout({
+      selectedMuscles: ['pecho'],
+      exercises: sampleExercises,
+      workoutSessions: [],
+      totalExercises: 2,
+    });
+
+    const lockedFirst = initial.items[0];
+    const variedWithLock = generateRecommendedWorkout({
+      selectedMuscles: ['brazos'],
+      exercises: sampleExercises,
+      workoutSessions: [],
+      totalExercises: 3,
+      lockedItems: [lockedFirst],
+      variationSeed: 1,
+    });
+
+    expect(variedWithLock.items).toHaveLength(3);
+    expect(variedWithLock.items[0].config.exerciseId).toBe(lockedFirst.config.exerciseId);
+    const uniqueIds = new Set(variedWithLock.items.map((i) => i.config.exerciseId));
+    expect(uniqueIds.size).toBe(3);
+
+    const slotPinned = generateRecommendedWorkout({
+      selectedMuscles: ['brazos'],
+      exercises: sampleExercises,
+      workoutSessions: [],
+      totalExercises: 3,
+      lockedSlots: [{ index: 1, item: lockedFirst }],
+      variationSeed: 1,
+    });
+    expect(slotPinned.items).toHaveLength(3);
+    expect(slotPinned.items[1].config.exerciseId).toBe(lockedFirst.config.exerciseId);
+  });
 });
