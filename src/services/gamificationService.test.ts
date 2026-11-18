@@ -12,16 +12,16 @@ describe('gamificationService', () => {
     const lv1 = calculateLevelFromXp(0);
     expect(lv1.level).toBe(1);
     expect(lv1.currentLevelXp).toBe(0);
-    expect(lv1.nextLevelXp).toBe(250);
+    expect(lv1.nextLevelXp).toBe(400);
 
-    const lv2 = calculateLevelFromXp(250);
+    const lv2 = calculateLevelFromXp(400);
     expect(lv2.level).toBe(2);
     expect(lv2.currentLevelXp).toBe(0);
-    expect(lv2.nextLevelXp).toBe(350);
+    expect(lv2.nextLevelXp).toBe(600);
 
-    const midLv2 = calculateLevelFromXp(425);
+    const midLv2 = calculateLevelFromXp(700);
     expect(midLv2.level).toBe(2);
-    expect(midLv2.currentLevelXp).toBe(175);
+    expect(midLv2.currentLevelXp).toBe(300);
     expect(midLv2.levelProgressPercent).toBe(50);
   });
 
@@ -182,5 +182,41 @@ describe('gamificationService', () => {
     expect(state.totalXp).toBe(0);
     expect(state.completedDailyMissionsCount).toBe(0);
     expect(state.unlockedAchievementsCount).toBe(0);
+  });
+
+  it('keeps a user at Level 1 after completing their first realistic 20-set workout', () => {
+    const firstSession: WorkoutSession = {
+      id: 'first-1',
+      routineId: 'r1',
+      routineName: 'Pecho y Brazos',
+      date: '2026-11-18',
+      startedAt: '2026-11-18T10:00:00Z',
+      isCompleted: true,
+      exercises: [1, 2, 3, 4, 5].map((n) => ({
+        exerciseId: `ex-${n}`,
+        exerciseName: `Ejercicio ${n}`,
+        mode: 'weight_reps',
+        sets: [1, 2, 3, 4].map((s) => ({
+          setNumber: s,
+          completed: true,
+          actualWeightKg: 20,
+          actualReps: 10,
+        })),
+      })),
+    };
+
+    const state = computeGamificationState({
+      workoutSessions: [firstSession],
+      foodEntries: [],
+      weightRecords: [],
+      dailyActivities: [],
+      exercises: [],
+      profile: null,
+      todayDateStr: '2026-11-18',
+    });
+
+    expect(state.totalPRsCount).toBe(0);
+    expect(state.level).toBe(1);
+    expect(state.totalXp).toBe(310);
   });
 });

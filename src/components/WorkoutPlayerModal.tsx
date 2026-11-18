@@ -2130,7 +2130,8 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
 
               // Detect PRs before saving or comparing with existing sessions
               const detectedPrs = detectSessionPRs(activeWorkout, workoutSessions);
-              const earnedXpObj = calculateSessionEarnedXp(activeWorkout, detectedPrs.length);
+              const realPrsCount = detectedPrs.filter((p) => !p.isFirstTime).length;
+              const earnedXpObj = calculateSessionEarnedXp(activeWorkout, realPrsCount);
 
               const finishedSession = finishActiveWorkout(undefined, shouldSync);
               const currentId = finishedSession?.id || activeWorkout.id;

@@ -246,12 +246,12 @@ export function calculateLevelFromXp(totalXp: number): {
 } {
   let level = 1;
   let remainingXp = Math.max(0, Math.floor(totalXp));
-  let neededForNext = 250;
+  let neededForNext = 400;
 
   while (remainingXp >= neededForNext) {
     remainingXp -= neededForNext;
     level++;
-    neededForNext = 250 + (level - 1) * 100;
+    neededForNext = 400 + (level - 1) * 200;
   }
 
   const levelProgressPercent = Math.min(100, Math.round((remainingXp / neededForNext) * 100));
@@ -340,13 +340,13 @@ export function calculateSessionEarnedXp(
   session: WorkoutSession,
   prsCount: number
 ): { baseXp: number; setsXp: number; prsXp: number; totalSessionXp: number } {
-  const baseXp = 100;
+  const baseXp = 60;
   const completedSets = (session.exercises || []).reduce(
     (acc, ex) => acc + (ex.sets || []).filter((s) => s.completed).length,
     0
   );
-  const setsXp = completedSets * 15;
-  const prsXp = prsCount * 50;
+  const setsXp = completedSets * 5;
+  const prsXp = prsCount * 25;
   return {
     baseXp,
     setsXp,
@@ -524,7 +524,10 @@ export function computeGamificationState(params: {
         const prevMax = runningMaxMap.get(key) || 0;
         if (maxInSess > prevMax) {
           runningMaxMap.set(key, maxInSess);
-          totalPRsCount++;
+          // Only count as a Personal Record for XP when beating an existing record (not first-ever baseline)
+          if (prevMax > 0) {
+            totalPRsCount++;
+          }
         }
       }
     }
@@ -546,7 +549,7 @@ export function computeGamificationState(params: {
       title: 'Primer Paso',
       description: 'Completa tu primera sesión de entrenamiento.',
       icon: '🏋️',
-      xpReward: 100,
+      xpReward: 50,
       unlocked: completedSessions.length >= 1,
       progress: Math.min(1, completedSessions.length),
       maxProgress: 1,
@@ -557,7 +560,7 @@ export function computeGamificationState(params: {
       title: 'Dedicación de Acero',
       description: 'Completa 10 sesiones de entrenamiento.',
       icon: '💪',
-      xpReward: 250,
+      xpReward: 150,
       unlocked: completedSessions.length >= 10,
       progress: Math.min(10, completedSessions.length),
       maxProgress: 10,
@@ -568,7 +571,7 @@ export function computeGamificationState(params: {
       title: 'Centurión del Gym',
       description: 'Completa 50 sesiones de entrenamiento.',
       icon: '🏛️',
-      xpReward: 600,
+      xpReward: 500,
       unlocked: completedSessions.length >= 50,
       progress: Math.min(50, completedSessions.length),
       maxProgress: 50,
@@ -579,7 +582,7 @@ export function computeGamificationState(params: {
       title: 'En Llamas',
       description: 'Mantén una racha activa de 3 días seguidos.',
       icon: '🔥',
-      xpReward: 150,
+      xpReward: 80,
       unlocked: activeStreakDays >= 3,
       progress: Math.min(3, activeStreakDays),
       maxProgress: 3,
@@ -590,7 +593,7 @@ export function computeGamificationState(params: {
       title: 'Imparable',
       description: 'Alcanza una racha activa de 7 días consecutivos.',
       icon: '⚡',
-      xpReward: 350,
+      xpReward: 200,
       unlocked: activeStreakDays >= 7,
       progress: Math.min(7, activeStreakDays),
       maxProgress: 7,
@@ -601,7 +604,7 @@ export function computeGamificationState(params: {
       title: 'Fuerza de Oso Grizzly',
       description: 'Levanta 500 kg de volumen total acumulado.',
       icon: '🐻',
-      xpReward: 150,
+      xpReward: 60,
       unlocked: totalVolumeKg >= 500,
       progress: Math.min(500, totalVolumeKg),
       maxProgress: 500,
@@ -612,7 +615,7 @@ export function computeGamificationState(params: {
       title: 'Domador de T-Rex',
       description: 'Levanta 7,000 kg de volumen total acumulado.',
       icon: '🦖',
-      xpReward: 400,
+      xpReward: 220,
       unlocked: totalVolumeKg >= 7000,
       progress: Math.min(7000, totalVolumeKg),
       maxProgress: 7000,
@@ -623,7 +626,7 @@ export function computeGamificationState(params: {
       title: 'Hércules Moderno',
       description: 'Acumula 25,000 kg de volumen total.',
       icon: '🏆',
-      xpReward: 750,
+      xpReward: 500,
       unlocked: totalVolumeKg >= 25000,
       progress: Math.min(25000, totalVolumeKg),
       maxProgress: 25000,
@@ -634,7 +637,7 @@ export function computeGamificationState(params: {
       title: 'Nutrición Consciente',
       description: 'Registra 10 alimentos en tu diario de calorías.',
       icon: '🥗',
-      xpReward: 150,
+      xpReward: 75,
       unlocked: foodEntries.length >= 10,
       progress: Math.min(10, foodEntries.length),
       maxProgress: 10,
@@ -645,7 +648,7 @@ export function computeGamificationState(params: {
       title: 'Chef Fitness',
       description: 'Registra 50 alimentos en tu bitácora nutricional.',
       icon: '🍱',
-      xpReward: 400,
+      xpReward: 250,
       unlocked: foodEntries.length >= 50,
       progress: Math.min(50, foodEntries.length),
       maxProgress: 50,
@@ -656,7 +659,7 @@ export function computeGamificationState(params: {
       title: 'Control Corporal',
       description: 'Realiza 5 registros de seguimiento de peso e IMC.',
       icon: '⚖️',
-      xpReward: 150,
+      xpReward: 75,
       unlocked: manualWeightRecords.length >= 5,
       progress: Math.min(5, manualWeightRecords.length),
       maxProgress: 5,
@@ -667,7 +670,7 @@ export function computeGamificationState(params: {
       title: 'Cuerpo Equilibrado',
       description: 'Entrena 4 o más grupos musculares distintos en los últimos 7 días.',
       icon: '🧬',
-      xpReward: 300,
+      xpReward: 150,
       unlocked: weeklyMuscleGroupsTrained.length >= 4,
       progress: Math.min(4, weeklyMuscleGroupsTrained.length),
       maxProgress: 4,
@@ -678,7 +681,7 @@ export function computeGamificationState(params: {
       title: 'Meta Cumplida',
       description: 'Alcanza tu peso objetivo configurado en tu perfil (±0.5 kg).',
       icon: '🎯',
-      xpReward: 500,
+      xpReward: 350,
       unlocked: reachedTargetWeight,
       progress: reachedTargetWeight ? 1 : 0,
       maxProgress: 1,
@@ -720,7 +723,7 @@ export function computeGamificationState(params: {
       title: 'Entrenamiento del Día',
       description: 'Completa al menos 1 sesión de entrenamiento hoy.',
       icon: '🏋️‍♂️',
-      xpReward: 100,
+      xpReward: 40,
       completed: workedOutToday,
       progress: workedOutToday ? 1 : 0,
       maxProgress: 1,
@@ -730,7 +733,7 @@ export function computeGamificationState(params: {
       title: 'Bitácora Nutricional',
       description: 'Registra al menos 2 comidas o snacks hoy.',
       icon: '🍎',
-      xpReward: 50,
+      xpReward: 20,
       completed: todayMealsCount >= 2,
       progress: Math.min(2, todayMealsCount),
       maxProgress: 2,
@@ -740,7 +743,7 @@ export function computeGamificationState(params: {
       title: 'Chequeo o Movimiento',
       description: 'Registra tu peso hoy o alcanza 5,000 pasos.',
       icon: '👟',
-      xpReward: 50,
+      xpReward: 20,
       completed: loggedWeightToday || todaySteps >= 5000,
       progress: loggedWeightToday ? 1 : Math.min(1, Number((todaySteps / 5000).toFixed(2))),
       maxProgress: 1,
@@ -755,7 +758,7 @@ export function computeGamificationState(params: {
       title: 'Trío de Hierro Semanal',
       description: 'Completa 3 entrenamientos en los últimos 7 días.',
       icon: '🔥',
-      xpReward: 250,
+      xpReward: 150,
       completed: weeklyWorkoutsCount >= 3,
       progress: Math.min(3, weeklyWorkoutsCount),
       maxProgress: 3,
@@ -765,19 +768,19 @@ export function computeGamificationState(params: {
       title: 'Mapa Muscular Simétrico',
       description: 'Activa al menos 4 grupos musculares distintos esta semana.',
       icon: '🧬',
-      xpReward: 300,
+      xpReward: 180,
       completed: weeklyMuscleGroupsTrained.length >= 4,
       progress: Math.min(4, weeklyMuscleGroupsTrained.length),
       maxProgress: 4,
     },
   ];
 
-  const workoutsXp = completedSessions.length * 100;
-  const setsXp = totalSetsCompleted * 15;
-  const prsXp = totalPRsCount * 50;
-  const nutritionDaysXp = foodDates.size * 30;
-  const mealsXp = foodEntries.length * 10;
-  const weightXp = manualWeightRecords.length * 25;
+  const workoutsXp = completedSessions.length * 60;
+  const setsXp = totalSetsCompleted * 5;
+  const prsXp = totalPRsCount * 25;
+  const nutritionDaysXp = foodDates.size * 15;
+  const mealsXp = foodEntries.length * 3;
+  const weightXp = manualWeightRecords.length * 15;
   const achievementsXp = achievements
     .filter((a) => a.unlocked)
     .reduce((acc, a) => acc + a.xpReward, 0);
