@@ -21,6 +21,7 @@ import { computeGamificationState, GamificationState } from '../services/gamific
 interface AppContextType {
   profile: UserProfile | null;
   hasProfile: boolean;
+  isStorageReady: boolean;
   routines: Routine[];
   exercises: ExerciseDefinition[];
   weightRecords: WeightRecord[];
@@ -70,16 +71,83 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [hasProfile, setHasProfile] = useState<boolean>(false);
-  const [routines, setRoutines] = useState<Routine[]>([]);
-  const [exercises, setExercises] = useState<ExerciseDefinition[]>([]);
-  const [weightRecords, setWeightRecords] = useState<WeightRecord[]>([]);
-  const [workoutSessions, setWorkoutSessions] = useState<WorkoutSession[]>([]);
-  const [activeWorkout, setActiveWorkout] = useState<WorkoutSession | null>(null);
-  const [foodEntries, setFoodEntries] = useState<FoodEntry[]>([]);
-  const [dailyActivities, setDailyActivities] = useState<DailyActivity[]>([]);
-  const [activityLevel, setActivityLevelState] = useState<ActivityLevel>('light');
+  const [profile, setProfile] = useState<UserProfile | null>(() => {
+    try {
+      return StorageService.getUserProfile();
+    } catch {
+      return null;
+    }
+  });
+  const [hasProfile, setHasProfile] = useState<boolean>(() => {
+    try {
+      return StorageService.hasUserProfile();
+    } catch {
+      return false;
+    }
+  });
+  const [isStorageReady, setIsStorageReady] = useState<boolean>(() => {
+    try {
+      return StorageService.hasUserProfile();
+    } catch {
+      return false;
+    }
+  });
+  const [routines, setRoutines] = useState<Routine[]>(() => {
+    try {
+      return StorageService.getRoutines();
+    } catch {
+      return [];
+    }
+  });
+  const [exercises, setExercises] = useState<ExerciseDefinition[]>(() => {
+    try {
+      return StorageService.getExercises();
+    } catch {
+      return [];
+    }
+  });
+  const [weightRecords, setWeightRecords] = useState<WeightRecord[]>(() => {
+    try {
+      return StorageService.getWeightRecords();
+    } catch {
+      return [];
+    }
+  });
+  const [workoutSessions, setWorkoutSessions] = useState<WorkoutSession[]>(() => {
+    try {
+      return StorageService.getWorkoutSessions();
+    } catch {
+      return [];
+    }
+  });
+  const [activeWorkout, setActiveWorkout] = useState<WorkoutSession | null>(() => {
+    try {
+      return StorageService.getActiveWorkout();
+    } catch {
+      return null;
+    }
+  });
+  const [foodEntries, setFoodEntries] = useState<FoodEntry[]>(() => {
+    try {
+      return StorageService.getFoodEntries();
+    } catch {
+      return [];
+    }
+  });
+  const [dailyActivities, setDailyActivities] = useState<DailyActivity[]>(() => {
+    try {
+      return StorageService.getDailyActivities();
+    } catch {
+      return [];
+    }
+  });
+  const [activityLevel, setActivityLevelState] = useState<ActivityLevel>(() => {
+    try {
+      return StorageService.getActivityLevel();
+    } catch {
+      return 'light';
+    }
+  });
 
   const activeWorkoutRef = useRef<WorkoutSession | null>(null);
   activeWorkoutRef.current = activeWorkout;
@@ -107,10 +175,29 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   useEffect(() => {
     refreshData();
 
+    let isMounted = true;
+    const safetyTimer = setTimeout(() => {
+      if (isMounted) {
+        setIsStorageReady(true);
+      }
+    }, 1500);
+
     // Ensure SQLite database is initialized and state refreshed
-    StorageService.init().then(() => {
-      refreshData();
-    });
+    StorageService.init()
+      .then(() => {
+        if (isMounted) {
+          refreshData();
+        }
+      })
+      .catch((e) => {
+        console.warn('[AppContext] StorageService.init error:', e);
+      })
+      .finally(() => {
+        if (isMounted) {
+          clearTimeout(safetyTimer);
+          setIsStorageReady(true);
+        }
+      });
 
     // Listen for app going into background to ensure workout notifications are scheduled
     let listenerHandle: any = null;
@@ -127,6 +214,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
 
     return () => {
+      isMounted = false;
+      clearTimeout(safetyTimer);
       if (listenerHandle?.remove) {
         listenerHandle.remove();
       }
@@ -538,6 +627,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       value={{
         profile,
         hasProfile,
+        isStorageReady,
         routines,
         exercises,
         weightRecords,

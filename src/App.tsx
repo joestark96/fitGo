@@ -49,12 +49,12 @@ import './theme/fittrack-theme.css';
 setupIonicReact();
 
 const MainApp: React.FC = () => {
-  const { hasProfile } = useApp();
+  const { hasProfile, isStorageReady } = useApp();
 
   return (
     <>
-      {/* Requirement 0: Check on app startup if local DB profile exists. If not, trigger onboarding. */}
-      <OnboardingModal isOpen={!hasProfile} />
+      {/* Show onboarding modal only when storage has finished initializing AND there is no profile */}
+      <OnboardingModal isOpen={isStorageReady && !hasProfile} />
 
       <IonTabs>
         <IonRouterOutlet>

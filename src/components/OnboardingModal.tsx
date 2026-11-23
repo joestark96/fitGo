@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   IonModal,
   IonHeader,
@@ -16,11 +16,29 @@ import {
   IonCard,
   IonCardContent,
   IonBadge,
+  IonAlert,
+  IonToast,
+  IonLoading,
 } from '@ionic/react';
-import { personCircleOutline, checkmarkCircleOutline, sparklesOutline, refreshOutline } from 'ionicons/icons';
+import {
+  personCircleOutline,
+  checkmarkCircleOutline,
+  sparklesOutline,
+  refreshOutline,
+  cloudDownloadOutline,
+  documentTextOutline,
+  phonePortraitOutline,
+} from 'ionicons/icons';
+import { Capacitor } from '@capacitor/core';
+import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { useApp } from '../context/AppContext';
 import { Gender, UserProfile } from '../types';
-import { getSuggestedTargetWeight } from '../services/storage';
+import {
+  getSuggestedTargetWeight,
+  StorageService,
+  FitTrackBackupPayload,
+  formatDateDDMMYYYY,
+} from '../services/storage';
 import { DateInput } from './DateInput';
 
 interface OnboardingModalProps {
@@ -29,7 +47,7 @@ interface OnboardingModalProps {
 }
 
 export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onComplete }) => {
-  const { saveProfile } = useApp();
+  const { saveProfile, refreshData } = useApp();
 
   const [name, setName] = useState('');
   const [birthDate, setBirthDate] = useState('');
@@ -40,6 +58,64 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onComp
   const [weekStartDay, setWeekStartDay] = useState<number>(1);
   const [hasManualTargetEdited, setHasManualTargetEdited] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
+
+  // Import / restore state
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isImporting, setIsImporting] = useState<boolean>(false);
+  const [pendingRestorePayload, setPendingRestorePayload] =
+    useState<Partial<FitTrackBackupPayload> | null>(null);
+  const [toastMessage, setToastMessage] = useState<string>('');
+  const [showToast, setShowToast] = useState<boolean>(false);
+  const [localNativeBackup, setLocalNativeBackup] = useState<{
+    exists: boolean;
+    payload: Partial<FitTrackBackupPayload> | null;
+  }>({ exists: false, payload: null });
+
+  // Detect local native backup in Android Data folder if available
+  useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      (async () => {
+        try {
+          let fileName = 'fitgo-ultimo-respaldo.json';
+          let stat: any = null;
+          try {
+            stat = await Filesystem.stat({ path: fileName, directory: Directory.Data });
+          } catch {
+            fileName = 'fittrack-ultimo-respaldo.json';
+            try {
+              stat = await Filesystem.stat({ path: fileName, directory: Directory.Data });
+            } catch {
+              stat = null;
+            }
+          }
+
+          if (stat?.uri) {
+            const content = await Filesystem.readFile({
+              path: fileName,
+              directory: Directory.Data,
+              encoding: Encoding.UTF8,
+            });
+            if (typeof content.data === 'string') {
+              const parsed = JSON.parse(content.data);
+              if (
+                parsed &&
+                (parsed.profile ||
+                  (Array.isArray(parsed.workoutSessions) && parsed.workoutSessions.length > 0) ||
+                  (Array.isArray(parsed.routines) && parsed.routines.length > 0))
+              ) {
+                setLocalNativeBackup({
+                  exists: true,
+                  payload: parsed,
+                });
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('[OnboardingModal] Error checking local native backup:', e);
+        }
+      })();
+    }
+  }, []);
 
   // Sugerencia inteligente de peso objetivo según IMC (-5 kg sobrepeso, 0 kg ideal, +5 kg bajo peso)
   const suggestedInfo = useMemo(() => {
@@ -57,6 +133,76 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onComp
       setTargetWeight(suggestedInfo.targetWeight.toString());
     }
   }, [suggestedInfo, hasManualTargetEdited]);
+
+  // Si no está abierto, no renderizamos absolutamente nada en el DOM
+  if (!isOpen) {
+    return null;
+  }
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setIsImporting(true);
+      const text = await file.text();
+      const parsed = JSON.parse(text) as Partial<FitTrackBackupPayload>;
+
+      const isValid =
+        parsed &&
+        typeof parsed === 'object' &&
+        (parsed.appName === 'fitGo!' ||
+          parsed.appName === 'fitGo' ||
+          parsed.appName === 'FitTrack' ||
+          Boolean(parsed.profile) ||
+          Array.isArray(parsed.workoutSessions) ||
+          Array.isArray(parsed.routines) ||
+          Array.isArray(parsed.weightRecords));
+
+      if (!isValid) {
+        setErrorMessage('El archivo seleccionado no es un respaldo válido (.json) de fitGo!.');
+        return;
+      }
+
+      setErrorMessage('');
+      setPendingRestorePayload(parsed);
+    } catch {
+      setErrorMessage(
+        'No se pudo leer el archivo JSON. Verifica que sea un respaldo válido de fitGo!.'
+      );
+    } finally {
+      setIsImporting(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const confirmRestoreBackup = async () => {
+    if (!pendingRestorePayload) return;
+    try {
+      setIsImporting(true);
+      await StorageService.importBackupData(pendingRestorePayload);
+      refreshData();
+
+      if (pendingRestorePayload.profile && pendingRestorePayload.profile.name) {
+        setPendingRestorePayload(null);
+        setToastMessage('¡Datos y perfil restaurados exitosamente! Bienvenido de vuelta a fitGo!.');
+        setShowToast(true);
+        if (onComplete) {
+          onComplete();
+        }
+      } else {
+        setPendingRestorePayload(null);
+        setToastMessage('Rutinas y datos importados con éxito. Completa tu perfil para continuar.');
+        setShowToast(true);
+      }
+    } catch (err: any) {
+      setErrorMessage(err?.message || 'Error al restaurar el respaldo.');
+      setPendingRestorePayload(null);
+    } finally {
+      setIsImporting(false);
+    }
+  };
 
   const handleSubmit = () => {
     if (!name.trim()) {
@@ -114,39 +260,137 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onComp
       </IonHeader>
 
       <IonContent className="ion-padding">
-        <div style={{ textAlign: 'center', marginTop: '1rem', marginBottom: '1.5rem' }}>
-          <IonIcon icon={personCircleOutline} style={{ fontSize: '72px', color: 'var(--ion-color-primary)' }} />
-          <h2 style={{ fontWeight: 700, margin: '8px 0 4px' }}>Configuración Inicial</h2>
+        <div style={{ textAlign: 'center', marginTop: '0.8rem', marginBottom: '1.2rem' }}>
+          <IonIcon icon={personCircleOutline} style={{ fontSize: '68px', color: 'var(--ion-color-primary)' }} />
+          <h2 style={{ fontWeight: 800, margin: '6px 0 4px', fontSize: '1.35rem' }}>Configuración Inicial</h2>
           <IonText color="medium">
-            <p style={{ margin: 0, fontSize: '0.95rem' }}>
-              Para calcular tu IMC y personalizar tus entrenamientos, necesitamos conocerte un poco.
+            <p style={{ margin: 0, fontSize: '0.92rem' }}>
+              Comienza tu camino hacia una mejor versión o restaura tus datos previos.
             </p>
           </IonText>
         </div>
 
-        {errorMessage && (
-          <IonCard color="danger" style={{ margin: '0 0 16px' }}>
-            <IonCardContent style={{ padding: '12px' }}>
-              <strong>Atención:</strong> {errorMessage}
-              <IonItem lines="none">
-              <IonLabel position="stacked" style={{ fontWeight: 600 }}>
-                Día de inicio de semana
-              </IonLabel>
-              <IonSelect
-                value={weekStartDay}
-                interface="popover"
-                onIonChange={(e) => setWeekStartDay(Number(e.detail.value))}
+        {/* ========================================================= */}
+        {/* OPCIÓN: IMPORTAR DATOS EXISTENTES / RESPALDO PREVIO       */}
+        {/* ========================================================= */}
+        <div
+          style={{
+            margin: '0 0 16px',
+            background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.75) 0%, rgba(15, 23, 42, 0.95) 100%)',
+            border: '1px solid rgba(59, 130, 246, 0.35)',
+            borderRadius: '16px',
+            padding: '14px 16px',
+            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.3)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+            <div
+              style={{
+                width: '38px',
+                height: '38px',
+                borderRadius: '12px',
+                background: 'rgba(59, 130, 246, 0.18)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#60a5fa',
+                flexShrink: 0,
+              }}
+            >
+              <IonIcon icon={cloudDownloadOutline} style={{ fontSize: '22px' }} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 700, fontSize: '0.94rem', color: '#f8fafc' }}>
+                ¿Ya usabas fitGo o tienes un respaldo?
+              </div>
+              <div style={{ fontSize: '0.78rem', color: '#94a3b8', lineHeight: 1.35 }}>
+                Restaura todo tu historial de entrenamientos, rutinas, peso y niveles en un toque.
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
+            {localNativeBackup.exists && localNativeBackup.payload && (
+              <button
+                type="button"
+                onClick={() => setPendingRestorePayload(localNativeBackup.payload)}
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  borderRadius: '10px',
+                  background: 'rgba(16, 185, 129, 0.16)',
+                  border: '1px solid rgba(16, 185, 129, 0.45)',
+                  color: '#34d399',
+                  fontWeight: 700,
+                  fontSize: '0.86rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  cursor: 'pointer',
+                }}
               >
-                <IonSelectOption value={1}>Lunes (Recomendado)</IonSelectOption>
-                <IonSelectOption value={0}>Domingo</IonSelectOption>
-                <IonSelectOption value={2}>Martes</IonSelectOption>
-                <IonSelectOption value={3}>Miércoles</IonSelectOption>
-                <IonSelectOption value={4}>Jueves</IonSelectOption>
-                <IonSelectOption value={5}>Viernes</IonSelectOption>
-                <IonSelectOption value={6}>Sábado</IonSelectOption>
-              </IonSelect>
-            </IonItem>
-          </IonCardContent>
+                <IonIcon icon={phonePortraitOutline} style={{ fontSize: '18px' }} />
+                Restaurar copia encontrada en el teléfono
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isImporting}
+              style={{
+                width: '100%',
+                padding: '10px 14px',
+                borderRadius: '10px',
+                background: 'rgba(59, 130, 246, 0.14)',
+                border: '1px solid rgba(59, 130, 246, 0.4)',
+                color: '#60a5fa',
+                fontWeight: 600,
+                fontSize: '0.86rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                cursor: 'pointer',
+              }}
+            >
+              <IonIcon icon={documentTextOutline} style={{ fontSize: '18px' }} />
+              {isImporting ? 'Cargando archivo...' : 'Importar copia de seguridad (.json)'}
+            </button>
+          </div>
+
+          <input
+            type="file"
+            ref={fileInputRef}
+            accept=".json,application/json"
+            style={{ display: 'none' }}
+            onChange={handleFileChange}
+          />
+        </div>
+
+        {/* Separador elegante */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '0 0 16px' }}>
+          <div style={{ flex: 1, height: '1px', background: 'rgba(255, 255, 255, 0.12)' }} />
+          <span
+            style={{
+              fontSize: '0.74rem',
+              color: '#64748b',
+              fontWeight: 700,
+              letterSpacing: '0.04em',
+              textTransform: 'uppercase',
+            }}
+          >
+            O crea tu perfil desde cero
+          </span>
+          <div style={{ flex: 1, height: '1px', background: 'rgba(255, 255, 255, 0.12)' }} />
+        </div>
+
+        {errorMessage && (
+          <IonCard color="danger" style={{ margin: '0 0 16px', borderRadius: '12px' }}>
+            <IonCardContent style={{ padding: '12px 14px', fontSize: '0.88rem' }}>
+              <strong>Atención:</strong> {errorMessage}
+            </IonCardContent>
           </IonCard>
         )}
 
@@ -209,6 +453,25 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onComp
                 value={initialWeight}
                 onIonInput={(e) => setInitialWeight(e.detail.value || '')}
               />
+            </IonItem>
+
+            <IonItem lines="full">
+              <IonLabel position="stacked" style={{ fontWeight: 600 }}>
+                Día de inicio de semana
+              </IonLabel>
+              <IonSelect
+                value={weekStartDay}
+                interface="popover"
+                onIonChange={(e) => setWeekStartDay(Number(e.detail.value))}
+              >
+                <IonSelectOption value={1}>Lunes (Recomendado)</IonSelectOption>
+                <IonSelectOption value={0}>Domingo</IonSelectOption>
+                <IonSelectOption value={2}>Martes</IonSelectOption>
+                <IonSelectOption value={3}>Miércoles</IonSelectOption>
+                <IonSelectOption value={4}>Jueves</IonSelectOption>
+                <IonSelectOption value={5}>Viernes</IonSelectOption>
+                <IonSelectOption value={6}>Sábado</IonSelectOption>
+              </IonSelect>
             </IonItem>
 
             <IonItem lines="none">
@@ -295,6 +558,38 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onComp
             </IonText>
           </div>
         </div>
+
+        {/* Diálogo de confirmación de restauración */}
+        <IonAlert
+          isOpen={Boolean(pendingRestorePayload)}
+          onDidDismiss={() => setPendingRestorePayload(null)}
+          header="¿Restaurar Respaldo?"
+          subHeader={
+            pendingRestorePayload?.exportedAt
+              ? `Exportado el ${formatDateDDMMYYYY(pendingRestorePayload.exportedAt)}`
+              : undefined
+          }
+          message={`Se restaurará el perfil de "${pendingRestorePayload?.profile?.name || 'Usuario'}" con ${pendingRestorePayload?.routines?.length || 0} rutinas, ${pendingRestorePayload?.workoutSessions?.length || 0} entrenamientos y ${pendingRestorePayload?.weightRecords?.length || 0} registros de peso.`}
+          buttons={[
+            { text: 'Cancelar', role: 'cancel' },
+            {
+              text: 'Restaurar e Iniciar',
+              handler: () => {
+                confirmRestoreBackup();
+              },
+            },
+          ]}
+        />
+
+        <IonToast
+          isOpen={showToast}
+          onDidDismiss={() => setShowToast(false)}
+          message={toastMessage}
+          duration={2500}
+          color="success"
+        />
+
+        <IonLoading isOpen={isImporting} message="Restaurando información..." />
       </IonContent>
     </IonModal>
   );
