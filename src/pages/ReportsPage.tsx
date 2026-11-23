@@ -89,7 +89,7 @@ export const ReportsPage: React.FC = () => {
   // Weight entry modal
   const [showWeightModal, setShowWeightModal] = useState<boolean>(false);
 
-  // Helper: Volume calculation for any workout session
+  // Helper: Volume calculation for any workout session with floating-point cleanup
   const calculateSessionVolume = (session: WorkoutSession): number => {
     let vol = 0;
     session.exercises?.forEach((ex) => {
@@ -99,7 +99,13 @@ export const ReportsPage: React.FC = () => {
         }
       });
     });
-    return vol;
+    return Math.round(vol * 10) / 10;
+  };
+
+  // Helper: Format volume cleanly without floating-point artifacts (e.g. 4008 instead of 4008.0000000000005)
+  const formatVolume = (vol: number): string => {
+    const rounded = Math.round(vol * 10) / 10;
+    return Number.isInteger(rounded) ? rounded.toString() : rounded.toFixed(1);
   };
 
   // Helper: Format duration
@@ -131,10 +137,11 @@ export const ReportsPage: React.FC = () => {
   );
   const totalVolumeKg = workoutSessions.reduce((acc, s) => acc + calculateSessionVolume(s), 0);
   const totalVolumeFormatted = useMemo(() => {
-    if (totalVolumeKg >= 1000) {
-      return `${(totalVolumeKg / 1000).toFixed(2)}K`;
+    const rounded = Math.round(totalVolumeKg * 10) / 10;
+    if (rounded >= 1000) {
+      return `${(rounded / 1000).toFixed(1)}K`;
     }
-    return `${totalVolumeKg}`;
+    return formatVolume(rounded);
   }, [totalVolumeKg]);
 
   // Dynamically calculate the last 8 calendar weeks ending at current week
@@ -320,6 +327,10 @@ export const ReportsPage: React.FC = () => {
           volumes[group] = (volumes[group] || 0) + exVol;
         });
       }
+    });
+
+    Object.keys(volumes).forEach((k) => {
+      volumes[k] = Math.round(volumes[k] * 10) / 10;
     });
 
     return volumes;
@@ -1129,7 +1140,7 @@ export const ReportsPage: React.FC = () => {
                         fontVariantNumeric: 'tabular-nums',
                       }}
                     >
-                      {latestWorkoutVolume}
+                      {formatVolume(latestWorkoutVolume)}
                     </div>
                     <div style={{ color: '#94a3b8', fontSize: '0.74rem' }}>
                       Volumen
@@ -1713,7 +1724,7 @@ export const ReportsPage: React.FC = () => {
                                       fontVariantNumeric: 'tabular-nums',
                                     }}
                                   >
-                                    {vol}
+                                    {formatVolume(vol)}
                                   </div>
                                   <div style={{ color: '#94a3b8', fontSize: '0.76rem', marginTop: '2px' }}>
                                     Volumen
@@ -1908,7 +1919,7 @@ export const ReportsPage: React.FC = () => {
                     <div>
                       <div style={{ fontSize: '0.78rem', color: '#94a3b8' }}>Volumen Total</div>
                       <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#3b82f6' }}>
-                        {calculateSessionVolume(selectedSessionDetail)} kg
+                        {formatVolume(calculateSessionVolume(selectedSessionDetail))} kg
                       </div>
                     </div>
                     {selectedSessionDetail.caloriesBurned !== undefined && (

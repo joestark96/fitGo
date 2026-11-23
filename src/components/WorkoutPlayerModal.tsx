@@ -940,7 +940,7 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
                 >
                   {sessionSummary.totalVolumeKg >= 1000
                     ? `${(sessionSummary.totalVolumeKg / 1000).toFixed(1)}K kg`
-                    : `${sessionSummary.totalVolumeKg} kg`}
+                    : `${Math.round(sessionSummary.totalVolumeKg * 10) / 10} kg`}
                 </div>
               </div>
 
@@ -2145,15 +2145,17 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
                 completedSets: completedSetsCount,
                 earnedXp: earnedXpObj.totalSessionXp,
                 prs: detectedPrs,
-                totalVolumeKg: (activeWorkout.exercises || []).reduce((acc, ex) => {
-                  let exVol = 0;
-                  (ex.sets || []).forEach((s) => {
-                    if (s.completed && s.actualReps && s.actualWeightKg) {
-                      exVol += s.actualReps * s.actualWeightKg;
-                    }
-                  });
-                  return acc + exVol;
-                }, 0),
+                totalVolumeKg: Math.round(
+                  (activeWorkout.exercises || []).reduce((acc, ex) => {
+                    let exVol = 0;
+                    (ex.sets || []).forEach((s) => {
+                      if (s.completed && s.actualReps && s.actualWeightKg) {
+                        exVol += s.actualReps * s.actualWeightKg;
+                      }
+                    });
+                    return acc + exVol;
+                  }, 0) * 10
+                ) / 10,
                 exercises: (activeWorkout.exercises || []).map((ex) => ({
                   name: ex.exerciseName || 'Ejercicio',
                   completedSetsCount: (ex.sets || []).filter((s) => s.completed).length,
