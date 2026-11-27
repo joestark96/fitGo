@@ -56,6 +56,11 @@ import { DateInput } from '../components/DateInput';
 import { AppHeader } from '../components/AppHeader';
 import { GamificationModal } from '../components/GamificationModal';
 import { notificationService } from '../services/notificationService';
+import {
+  AppUpdateInfo,
+  checkForAppUpdate,
+  openUpdateDownload,
+} from '../services/updateService';
 
 export const ProfilePage: React.FC = () => {
   const {
@@ -99,7 +104,27 @@ export const ProfilePage: React.FC = () => {
   });
   const [pendingRestorePayload, setPendingRestorePayload] =
     useState<Partial<FitTrackBackupPayload> | null>(null);
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const [manualUpdateInfo, setManualUpdateInfo] = useState<AppUpdateInfo | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleManualUpdateCheck = async () => {
+    if (checkingUpdate) return;
+    setCheckingUpdate(true);
+    const info = await checkForAppUpdate();
+    setCheckingUpdate(false);
+    if (!info) {
+      setToastText('No se pudo conectar con GitHub. Revisa tu conexión.');
+      setShowToast(true);
+      return;
+    }
+    if (info.hasUpdate) {
+      setManualUpdateInfo(info);
+    } else {
+      setToastText(`Ya tienes la última versión instalada (v${info.currentVersion}).`);
+      setShowToast(true);
+    }
+  };
 
   const downloadBackupFile = (jsonString: string, fileName: string) => {
     const blob = new Blob([jsonString], { type: 'application/json' });
@@ -1425,6 +1450,45 @@ export const ProfilePage: React.FC = () => {
           </IonCardContent>
         </IonCard>
 
+        {/* App Updates Card */}
+        <IonCard style={{ margin: '0 0 16px', borderRadius: '16px' }}>
+          <IonCardHeader style={{ padding: '16px 16px 8px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <IonCardTitle style={{ fontSize: '1.05rem' }}>
+                Actualizaciones de fitGo!
+              </IonCardTitle>
+              <span
+                style={{
+                  fontSize: '0.75rem',
+                  fontWeight: 800,
+                  color: '#60a5fa',
+                  background: 'rgba(59, 130, 246, 0.14)',
+                  border: '1px solid rgba(59, 130, 246, 0.3)',
+                  padding: '3px 9px',
+                  borderRadius: '999px',
+                }}
+              >
+                v{APP_VERSION}
+              </span>
+            </div>
+          </IonCardHeader>
+          <IonCardContent style={{ padding: '0 16px 16px' }}>
+            <p style={{ margin: '0 0 12px', fontSize: '0.84rem', color: 'var(--ion-color-medium)' }}>
+              Comprueba en GitHub si hay una versión más reciente del APK disponible para descargar.
+            </p>
+            <IonButton
+              expand="block"
+              fill="outline"
+              color="primary"
+              disabled={checkingUpdate}
+              onClick={handleManualUpdateCheck}
+            >
+              <IonIcon slot="start" icon={refreshOutline} />
+              {checkingUpdate ? 'Buscando en GitHub...' : 'Buscar nueva versión'}
+            </IonButton>
+          </IonCardContent>
+        </IonCard>
+
         {/* Database Management */}
         <IonCard style={{ margin: '0 0 24px', borderRadius: '16px' }}>
           <IonCardHeader style={{ padding: '16px 16px 8px' }}>
@@ -1512,6 +1576,22 @@ export const ProfilePage: React.FC = () => {
             },
           ]}
         />
+        <IonAlert
+          isOpen={Boolean(manualUpdateInfo)}
+          onDidDismiss={() => setManualUpdateInfo(null)}
+          header={`¡Nueva versión disponible! (v${manualUpdateInfo?.latestVersion || ''})`}
+          message={`Tienes instalada la versión v${manualUpdateInfo?.currentVersion || APP_VERSION}. Ya está disponible fitGo! v${manualUpdateInfo?.latestVersion || ''} en GitHub.`}
+          buttons={[
+            { text: 'Más tarde', role: 'cancel' },
+            {
+              text: 'Descargar APK',
+              handler: () => {
+                if (manualUpdateInfo) openUpdateDownload(manualUpdateInfo);
+              },
+            },
+          ]}
+        />
+
         <GamificationModal
           isOpen={gamificationModalTab !== null}
           initialTab={gamificationModalTab || 'achievements'}

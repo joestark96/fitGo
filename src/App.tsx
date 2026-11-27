@@ -20,6 +20,7 @@ import ReportsPage from './pages/ReportsPage';
 import ProfilePage from './pages/ProfilePage';
 import { AppProvider, useApp } from './context/AppContext';
 import { OnboardingModal } from './components/OnboardingModal';
+import { AppUpdateChecker } from './components/AppUpdateChecker';
 
 /* Core CSS required for Ionic components to work properly */
 import '@ionic/react/css/core.css';
@@ -55,6 +56,7 @@ const MainApp: React.FC = () => {
     <>
       {/* Show onboarding modal only when storage has finished initializing AND there is no profile */}
       <OnboardingModal isOpen={isStorageReady && !hasProfile} />
+      <AppUpdateChecker />
 
       <IonTabs>
         <IonRouterOutlet>

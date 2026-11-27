@@ -48,6 +48,8 @@ import {
   createOutline,
 } from 'ionicons/icons';
 import { useNavigate } from 'react-router-dom';
+import { Capacitor } from '@capacitor/core';
+import { App as CapacitorApp } from '@capacitor/app';
 import { useApp } from '../context/AppContext';
 import { ExerciseGif } from './ExerciseGif';
 import { ExerciseCatalogModal } from './ExerciseCatalogModal';
@@ -109,10 +111,13 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
   // Workout duration timer
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(true);
+  const elapsedBaseRef = useRef<number>(0);
+  const timerAnchorMsRef = useRef<number | null>(null);
 
   // Rest countdown timer
   const [restSecondsLeft, setRestSecondsLeft] = useState<number | null>(null);
   const [restMaxDuration, setRestMaxDuration] = useState<number>(60);
+  const restEndMsRef = useRef<number | null>(null);
 
   // Alert confirmations & dialogs
   const [showCancelAlert, setShowCancelAlert] = useState(false);
@@ -536,42 +541,131 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
     setDragOverExIdx(null);
   };
 
+  const startRestTimer = (seconds: number) => {
+    const cleanSeconds = Math.max(1, Math.round(seconds));
+    restEndMsRef.current = Date.now() + cleanSeconds * 1000;
+    setRestMaxDuration(cleanSeconds);
+    setRestSecondsLeft(cleanSeconds);
+  };
+
+  const clearRestTimer = () => {
+    restEndMsRef.current = null;
+    setRestSecondsLeft(null);
+  };
+
+  const adjustRestTimer = (deltaSeconds: number) => {
+    if (restEndMsRef.current === null) {
+      setRestSecondsLeft((prev) => Math.max(0, (prev || 0) + deltaSeconds));
+      return;
+    }
+    restEndMsRef.current = Math.max(Date.now(), restEndMsRef.current + deltaSeconds * 1000);
+    const left = Math.max(0, Math.ceil((restEndMsRef.current - Date.now()) / 1000));
+    if (left <= 0) {
+      clearRestTimer();
+    } else {
+      setRestSecondsLeft(left);
+    }
+  };
+
+  const syncTimersFromClock = () => {
+    if (timerAnchorMsRef.current !== null) {
+      const total =
+        elapsedBaseRef.current +
+        Math.max(0, Math.floor((Date.now() - timerAnchorMsRef.current) / 1000));
+      setElapsedSeconds(total);
+    }
+    if (restEndMsRef.current !== null) {
+      const left = Math.max(0, Math.ceil((restEndMsRef.current - Date.now()) / 1000));
+      if (left <= 0) {
+        clearRestTimer();
+      } else {
+        setRestSecondsLeft(left);
+      }
+    }
+  };
+
   // Sync elapsed timer from activeWorkout start time
   useEffect(() => {
     if (activeWorkout?.startedAt) {
       const startMs = new Date(activeWorkout.startedAt).getTime();
       const currentElapsed = Math.max(0, Math.floor((Date.now() - startMs) / 1000));
+      elapsedBaseRef.current = currentElapsed;
+      timerAnchorMsRef.current = isTimerRunning ? Date.now() : null;
       setElapsedSeconds(currentElapsed);
+    } else {
+      elapsedBaseRef.current = 0;
+      timerAnchorMsRef.current = null;
+      setElapsedSeconds(0);
     }
   }, [activeWorkout?.startedAt]);
 
-  // Elapsed timer loop
+  // Elapsed timer loop (wall-clock anchored so backgrounding never loses time)
   useEffect(() => {
-    let interval: any = null;
-    if (isOpen && activeWorkout && isTimerRunning && !showFinishAlert) {
-      interval = setInterval(() => {
-        setElapsedSeconds((prev) => prev + 1);
-      }, 1000);
+    const shouldRun = Boolean(isOpen && activeWorkout && isTimerRunning && !showFinishAlert);
+    let interval: ReturnType<typeof setInterval> | null = null;
+
+    if (shouldRun) {
+      if (timerAnchorMsRef.current === null) {
+        timerAnchorMsRef.current = Date.now();
+      }
+      syncTimersFromClock();
+      interval = setInterval(syncTimersFromClock, 500);
+    } else if (timerAnchorMsRef.current !== null) {
+      elapsedBaseRef.current += Math.max(
+        0,
+        Math.floor((Date.now() - timerAnchorMsRef.current) / 1000)
+      );
+      timerAnchorMsRef.current = null;
+      setElapsedSeconds(elapsedBaseRef.current);
     }
+
     return () => {
       if (interval) clearInterval(interval);
     };
   }, [isOpen, Boolean(activeWorkout), isTimerRunning, showFinishAlert]);
 
-  // Rest countdown timer loop
+  // Rest countdown timer loop (wall-clock anchored)
   useEffect(() => {
-    let interval: any = null;
-    if (restSecondsLeft !== null && restSecondsLeft > 0) {
-      interval = setInterval(() => {
-        setRestSecondsLeft((prev) => (prev !== null && prev > 0 ? prev - 1 : null));
-      }, 1000);
-    } else if (restSecondsLeft === 0) {
-      setRestSecondsLeft(null);
+    if (restSecondsLeft === null) return;
+    if (restSecondsLeft <= 0) {
+      clearRestTimer();
+      return;
     }
-    return () => {
-      if (interval) clearInterval(interval);
+    if (restEndMsRef.current === null) {
+      restEndMsRef.current = Date.now() + restSecondsLeft * 1000;
+    }
+    const interval = setInterval(syncTimersFromClock, 500);
+    return () => clearInterval(interval);
+  }, [restSecondsLeft !== null]);
+
+  // Immediately resync timers when returning from background (Android/iOS/Web)
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        syncTimersFromClock();
+      }
     };
-  }, [restSecondsLeft]);
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    let appStateHandle: { remove: () => Promise<void> } | null = null;
+    if (Capacitor.isNativePlatform()) {
+      CapacitorApp.addListener('appStateChange', ({ isActive }) => {
+        if (isActive) {
+          syncTimersFromClock();
+        }
+      }).then((handle) => {
+        appStateHandle = handle;
+      });
+    }
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+      if (appStateHandle) {
+        appStateHandle.remove();
+      }
+    };
+  }, [isOpen]);
 
   const handleDismiss = () => {
     setSessionSummary(null);
@@ -680,15 +774,13 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
 
       if (remainingUncompleted === 0) {
         // Last set completed! Skip rest timer and scroll to finish button
-        setRestSecondsLeft(null);
+        clearRestTimer();
         setTimeout(() => {
           contentRef.current?.scrollToBottom(500);
         }, 120);
         setToastMessage('🎉 ¡Todas las series completadas! Puedes finalizar tu entrenamiento.');
       } else {
-        const suggestedRest = 60;
-        setRestMaxDuration(suggestedRest);
-        setRestSecondsLeft(suggestedRest);
+        startRestTimer(60);
       }
     }
   };
@@ -2375,7 +2467,7 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginBottom: '16px' }}>
             <button
               type="button"
-              onClick={() => setRestSecondsLeft((prev) => Math.max(0, (prev || 0) - 5))}
+              onClick={() => adjustRestTimer(-5)}
               style={{
                 flex: 1,
                 background: '#202736',
@@ -2399,7 +2491,7 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
 
             <button
               type="button"
-              onClick={() => setRestSecondsLeft((prev) => (prev || 0) + 5)}
+              onClick={() => adjustRestTimer(5)}
               style={{
                 flex: 1,
                 background: '#202736',
@@ -2425,7 +2517,7 @@ export const WorkoutPlayerModal: React.FC<WorkoutPlayerModalProps> = ({ isOpen, 
           {/* Saltar descanso button */}
           <button
             type="button"
-            onClick={() => setRestSecondsLeft(null)}
+            onClick={clearRestTimer}
             style={{
               width: '100%',
               background: '#3b82f6',
